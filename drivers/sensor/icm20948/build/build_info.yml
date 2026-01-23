@@ -1,4 +1,0 @@
-west:
-  command: C:\ncs\toolchains\66cdf9b75e\opt\bin\Scripts\west build
-  topdir: c:\ncs\v3.2.1
-  version: 1.4.0

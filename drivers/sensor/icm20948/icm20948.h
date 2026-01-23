@@ -625,8 +625,8 @@ typedef union {
         // Slave 1
         union {
             struct {
-                uint8_t I2C_ID_0            : 7;
-                uint8_t I2C_SLV0_RNW        : 1;
+                uint8_t I2C_ID_1            : 7;
+                uint8_t I2C_SLV1_RNW        : 1;
             } bits;
             uint8_t byte;
         } I2C_SLV1_ADDR;
