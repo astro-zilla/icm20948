@@ -4,7 +4,8 @@
 
 #define AK09916_REG_COUNT       (18)
 
-#define AK09916_COMAPNY_ID      (0x48)
+#define AK09916_I2C_ADDR        ()
+#define AK09916_COMPANY_ID      (0x48)
 #define AK09916_DEVICE_ID       (0x09)
 
 typedef enum {
@@ -76,3 +77,6 @@ typedef union {
     } bytes;
     uint8_t arr[AK09916_REG_COUNT];
 } ak09916_reg_t;
+
+int ak09916_convert_mag(struct sensor_value *val int16_t raw_val, inst16_t scale, uint8_t st2);
+int ak09916_init(const struct device *dev);
