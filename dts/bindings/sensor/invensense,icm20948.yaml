@@ -1,0 +1,100 @@
+description: "InvenSense ICM-20948 9-axis motion tracking device"
+
+compatible: "invensense,icm20948"
+
+include: [sensor-device.yaml, i2c-device.yaml]
+
+properties:
+  irq-gpios:
+    type: phandle-array
+    description: |
+      The INT signal default configuration is active-high.  The
+      property value should ensure the flags properly describe the
+      signal that is presented to the driver.
+      This property is required when the trigger mode is used.
+
+  gyro-sr-div:
+    type: int
+    required: true
+    description: |
+      Default gyrscope sample rate divider. This divider is only effective
+      when gyro-dlpf is in range 1-6 and gyro-fchoice is 1.
+      rate = sample_rate / (1 + gyro-smplrt-div)
+      Valid range: 0 - 255
+
+  gyro-dlpf:
+    type: string
+    required: true
+    description: |
+      Default digital low pass filter frequency of gyroscope.
+      Maps to GYRO_DLPFCFG field in Gyroscope Configuration setting.
+    enum:
+      - "196.6"
+      - "151.8"
+      - "119.5"
+      - "51.2"
+      - "23.9"
+      - "11.6"
+      - "5.7"
+      - "361.4"
+  
+  gyro-fs-sel:
+    type: int
+    required: true
+    description: |
+      Default full scale of gyroscope. (Unit - DPS).
+      Maps to GYRO_FS_SEL field in Gyroscope Configuration setting.
+    enum:
+      - 250
+      - 500
+      - 1000
+      - 2000
+
+  gyro-fchoice:
+    type: boolean
+    description: |
+      Enable/Disable gyroscope digital low pass filter.
+      Maps to GYRO_FCHOICE field in Gyroscope Configuration setting.
+
+  accel-sr-div:
+    type: int
+    required: true
+    description: |
+      Default accelerometer sample rate divider. This divider is only effective
+      when accel-dlpf is in range 1-6 and accel-fchoice is 1.
+      rate = 1.125 kHz/(1+ACCEL_SMPLRT_DIV[11:0])
+      Valid range: 0 - 4095
+
+  accel-dlpf:
+    type: string
+    required: true
+    description: |
+      Default digital low pass filter frequency of accelerometer.
+      Maps to ACCEL_DLPFCFG field in Accelerometer Configuration setting.
+    enum:
+      - "246.0"
+      - "246.0a"
+      - "111.4"
+      - "50.4"
+      - "23.9"
+      - "11.5"
+      - "5.7"
+      - "473"
+
+  accel-fs-sel:
+    type: int
+    required: true
+    description: |
+      Default full scale of accelerometer. (Unit - g)
+      Maps to ACCEL_FS_SEL field in Accelerometer Configuration setting
+    enum:
+      - 2
+      - 4
+      - 8
+      - 16
+
+  accel-fchoice:
+    type: boolean
+    description: |
+      Enable/Disable accelerometer digital low pass filter.
+      Maps to ACCEL_FCHOICE field in Accelerometer Configuration setting.

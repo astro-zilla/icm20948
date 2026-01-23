@@ -1,0 +1,20 @@
+config ICM20948
+    bool "ICM20948 9-axis Motion Sensor"
+    depends on DT_HAS_INVENSENSE_ICM20948_ENABLED
+    select I2C
+    help
+      Enable support for the ICM20948 9-axis Motion Sensor
+
+      https://www.invensense.com/products/motion-tracking/9-axis/icm-20948/
+        Requires I2C or SPI.
+
+if ICM20948
+
+config ICM20948_INIT_PRIORITY
+    int "Init priority"
+    default SENSOR_INIT_PRIORITY
+    help
+      Set the initialization priority of the ICM20948 driver.
+      Higher numbers indicate higher priority.
+
+endif # ICM20948
