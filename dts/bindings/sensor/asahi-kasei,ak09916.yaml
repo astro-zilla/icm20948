@@ -1,0 +1,19 @@
+description: AK09916 3-axis electronic compass
+
+compatible: "asahi-kasei,ak09916"
+
+include: [sensor-device.yaml, i2c-device.yaml]
+
+properties:
+  mode:
+    type: string
+    description: |
+      Operating mode of the AK09916 magnetometer.
+    enum:
+      - "powerdown"
+      - "singlemeasure"
+      - "cont_10hz"
+      - "cont_20hz"
+      - "cont_50hz"
+      - "cont_100hz"
+      - "selftest"
