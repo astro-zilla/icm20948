@@ -732,15 +732,15 @@ typedef union {
 } icm20948_reg_bank_3_t;
 
 typedef struct {
-    int16_t accel_x;
-    int16_t accel_y;
-    int16_t accel_z;
+    float accel_x;
+    float accel_y;
+    float accel_z;
 
-    int16_t gyro_x;
-    int16_t gyro_y;
-    int16_t gyro_z;
+    float gyro_x;
+    float gyro_y;
+    float gyro_z;
 
-    int16_t temp;
+    float temp;
 } icm20948_converted_t;
 
 struct icm20948_data{
@@ -755,6 +755,9 @@ struct icm20948_data{
 
 struct icm20948_config {
     const struct i2c_dt_spec i2c;
+    const struct gpio_dt_spec int_gpio;
+
+    // const struct icm20948_api *api;
 
     uint8_t gyro_sr_div;
     uint8_t gyro_dlpf;
@@ -766,15 +769,22 @@ struct icm20948_config {
     uint8_t accel_fs_sel;
     bool accel_fchoice;
 
-    const struct gpio_dt_spec int_gpio;
+    bool fifo_enable;
+
+    
 };
+
+struct icm20948_api {
+    int (*read)(const struct device *dev, icm20948_reg_bank_sel_t bank, uint8_t reg_addr, uint8_t *data, size_t length);
+    int (*write)(const struct device *dev, icm20948_reg_bank_sel_t bank, uint8_t reg_addr, const uint8_t *data, size_t length);
+};
+
+#define ICM20948_INIT_PRIORITY 91
 
 int icm20948_init(const struct device *dev);
 
 int icm20948_read(const struct device *dev, icm20948_reg_bank_sel_t bank, uint8_t reg_addr, uint8_t *data, size_t length);
 int icm20948_write(const struct device *dev, icm20948_reg_bank_sel_t bank, uint8_t reg_addr, const uint8_t *data, size_t length);
-
-int icm20948_bank_sel(const struct device *dev, icm20948_reg_bank_sel_t bank);
 
 int icm20948_sample_fetch(const struct device *dev, enum sensor_channel chan);
 int icm20948_channel_get(const struct device *dev, enum sensor_channel chan, struct sensor_value *val);

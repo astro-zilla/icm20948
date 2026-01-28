@@ -98,3 +98,8 @@ properties:
     description: |
       Enable/Disable accelerometer digital low pass filter.
       Maps to ACCEL_FCHOICE field in Accelerometer Configuration setting.
+
+  fifo-enable:
+    type: boolean
+    description: |
+      Enable/Disable FIFO buffer.

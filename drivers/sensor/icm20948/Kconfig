@@ -18,3 +18,12 @@ config ICM20948_INIT_PRIORITY
       Higher numbers indicate higher priority.
 
 endif # ICM20948
+
+config ICM20948_AK09916
+    bool "AK09916 Magnetometer Support"
+    default y
+    depends on ICM20948
+    depends on DT_HAS_ASAHI_KASEI_AK09916_ENABLED
+    help
+      Enable support for the AK09916 magnetometer integrated in the ICM20948 sensor.
+
