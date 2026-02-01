@@ -1,1 +1,1 @@
-extern const unsigned char dmp_firmware[14301];
+extern const unsigned char icm20948_dmp_firmware[14301];

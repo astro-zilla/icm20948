@@ -19,6 +19,7 @@
 #define ICM20948_REG_BANK_SEL_SHIFT         (4)
 
 #define ICM20948_MAX_SERIAL_READ            (0x0F)
+#define ICM20948_MAX_SERIAL_WRITE           (0x0F)
 
 #define DMP_CFG_FIFO_SIZE                   (4222)
  
@@ -1057,6 +1058,9 @@ struct icm20948_api {
 #define ICM20948_INIT_PRIORITY 91
 
 int icm20948_init(const struct device *dev);
+
+int icm20948_mem_read(const struct device *dev, uint16_t mem_addr, uint8_t *data, size_t length);
+int icm20948_mem_write(const struct device *dev, uint16_t mem_addr, const uint8_t *data, size_t length);
 
 int icm20948_read(const struct device *dev, icm20948_reg_bank_sel_t bank, uint8_t reg_addr, uint8_t *data, size_t length);
 int icm20948_write(const struct device *dev, icm20948_reg_bank_sel_t bank, uint8_t reg_addr, const uint8_t *data, size_t length);
