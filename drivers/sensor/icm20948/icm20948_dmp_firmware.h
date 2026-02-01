@@ -1,0 +1,1 @@
+extern const unsigned char dmp_firmware[14301];
