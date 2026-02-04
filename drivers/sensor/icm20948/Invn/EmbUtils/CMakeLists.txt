@@ -1,0 +1,9 @@
+zephyr_library_sources(
+    DataConverter.c
+    ErrorHelper.c
+    InvProtocol.c
+    InvQueue.c
+    InvScheduler.c
+    Message.c
+    RingByteBuffer.c
+)

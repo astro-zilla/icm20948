@@ -1,0 +1,4 @@
+add_subdirectory_ifdef(CONFIG_ICM20948 Devices/Drivers/Ak0991x)
+add_subdirectory_ifdef(CONFIG_ICM20948 Devices/Drivers/ICM20948)
+add_subdirectory_ifdef(CONFIG_ICM20948 DynamicProtocol)
+add_subdirectory_ifdef(CONFIG_ICM20948 EmbUtils)

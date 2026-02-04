@@ -1,0 +1,14 @@
+zephyr_library_sources(
+    Icm20948Augmented.c
+    Icm20948AuxCompassAkm.c
+    Icm20948AuxTransport.c
+    Icm20948DataBaseControl.c
+    Icm20948DataBaseDriver.c
+    Icm20948DataConverter.c
+    Icm20948Dmp3Driver.c
+    Icm20948LoadFirmware.c
+    Icm20948MPUFifoControl.c
+    Icm20948SelfTest.c
+    Icm20948Setup.c
+    Icm20948Transport.c
+)
