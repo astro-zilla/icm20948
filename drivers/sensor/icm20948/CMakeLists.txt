@@ -1,5 +1,5 @@
 zephyr_library()
 
-zephyr_library_sources(icm20948.c)
-zephyr_library_sources(ak09916.c)
-zephyr_library_sources(icm20948_dmp_firmware.c)
+zephyr_library_sources(icm20948.c ak09916.c icm20948_dmp.c)
+
+add_subdirectory_ifdef(CONFIG_ICM20948 Invn)

@@ -6,7 +6,7 @@
 #include <zephyr/logging/log.h>
 
 #include "icm20948.h"
-#include "icm20948_dmp_firmware.h"
+#include "icm20948_dmp.h"
 
 #define DT_DRV_COMPAT invensense_icm20948
 
@@ -99,10 +99,19 @@ int icm20948_channel_get(const struct device *dev,
 int icm20948_sample_fetch(const struct device *dev,
 				enum sensor_channel chan) {
 	struct icm20948_data *drv_data = dev->data;
-	icm20948_read(dev, ICM20948_BANK0, ICM20948_BANK0_ACCEL_XOUT_H, &drv_data->bank0.bytes.ACCEL_XOUT_H, 14);
-	icm20948_read(dev, ICM20948_BANK2, ICM20948_BANK2_GYRO_CONFIG_1, &drv_data->bank2.bytes.GYRO_CONFIG_1.byte, 2);
-	icm20948_read(dev, ICM20948_BANK2, ICM20948_BANK2_ACCEL_CONFIG, &drv_data->bank2.bytes.ACCEL_CONFIG.byte, 2);
-
+	int fifo_count;
+	switch (chan) {
+	case SENSOR_CHAN_ALL:
+		icm20948_read(dev, ICM20948_BANK0, ICM20948_BANK0_ACCEL_XOUT_H, &drv_data->bank0.bytes.ACCEL_XOUT_H, 14);
+		icm20948_read(dev, ICM20948_BANK2, ICM20948_BANK2_GYRO_CONFIG_1, &drv_data->bank2.bytes.GYRO_CONFIG_1.byte, 2);
+		icm20948_read(dev, ICM20948_BANK2, ICM20948_BANK2_ACCEL_CONFIG, &drv_data->bank2.bytes.ACCEL_CONFIG.byte, 2);
+		
+		icm20948_get_FIFO_count(dev, &fifo_count);
+		icm20948_read_FIFO(dev, fifo_count);
+		break;
+	default:
+		return -ENOTSUP;
+	}
 	return 0;
 }
 
@@ -122,32 +131,31 @@ int icm20948_reset_FIFO(const struct device* dev) {
 	return ret;
 }
 
-int16_t icm20948_get_FIFO_cnt(const struct device *dev) {
+int icm20948_get_FIFO_count(const struct device *dev, uint16_t *fifo_count) {
 	struct icm20948_data *drv_data = dev->data;
 	if (icm20948_read(dev, ICM20948_BANK0, ICM20948_BANK0_FIFO_COUNTH, &drv_data->bank0.bytes.FIFO_COUNTH.byte, 2)!=0) {
 		return -EIO;
 	}
-	drv_data->bank0.bytes.FIFO_COUNTH.bits.RSVD = 0;
-	return *(int16_t*)&drv_data->bank0.bytes.FIFO_COUNTH.byte;
+	drv_data->bank0.bytes.FIFO_COUNTH.byte &= 0x1f;
+	*fifo_count = sys_be16_to_cpu(*(uint16_t*)&drv_data->bank0.bytes.FIFO_COUNTH.byte);
+	return 0;
+}
+
+int icm20948_read_FIFO(const struct device *dev, size_t length) {
+	struct icm20948_data *drv_data = dev->data;
+	if (length > sizeof(drv_data->fifo)) {
+		LOG_ERR("Not enough space in buffer for FIFO data.");
+		return -ENOMEM;
+	}
+	return icm20948_read(dev, ICM20948_BANK0, ICM20948_BANK0_FIFO_R_W, &drv_data->fifo, length);
 }
 
 int icm20948_firmware_load(const struct device *dev) {
-		const unsigned char read_firmware[sizeof(icm20948_dmp_firmware)];
-		if (icm20948_mem_write(dev, DMP_LOAD_START, (uint8_t*)&icm20948_dmp_firmware, sizeof(icm20948_dmp_firmware))!=0) {
+		if (icm20948_mem_write(dev, DMP_LOAD_START, (const uint8_t*)&icm20948_dmp_firmware, sizeof(icm20948_dmp_firmware), true)!=0) {
 			LOG_ERR("Error loading DMP firmware.");
 			return -1;
 		} else {
-			LOG_INF("DMP firmware loaded successfully");
-		}
-		if (icm20948_mem_read(dev, DMP_LOAD_START, (uint8_t*)&read_firmware, sizeof(icm20948_dmp_firmware))!=0) {
-			LOG_ERR("Error reading back DMP firmware.");
-			return -1;
-		}
-		if (memcmp(icm20948_dmp_firmware, read_firmware, sizeof(icm20948_dmp_firmware))!=0) {
-			LOG_ERR("DMP firmware readback does not match!");
-			return -1;
-		} else {
-			LOG_INF("DMP firmware readback matches.");
+			LOG_DBG("DMP firmware loaded successfully");
 		}
 		return 0;
 
@@ -156,17 +164,21 @@ int icm20948_firmware_load(const struct device *dev) {
 int icm20948_mem_read(const struct device *dev, uint16_t addr, uint8_t *data, size_t length) {
 	struct icm20948_data *drv_data = dev->data;
 	unsigned int nread = 0;
-	int rc;
+	int rc=0;
 	size_t chunksize;
 	
-	drv_data->bank0.bytes.MEM_BANK_SEL = addr >> 8;
-	rc = icm20948_write(dev, ICM20948_BANK0, ICM20948_BANK0_MEM_BANK_SEL, &drv_data->bank0.bytes.MEM_BANK_SEL, 1);
-
+	/* Use 0xFF as an invalid sentinel to force bank select on first iteration. */
+	drv_data->bank0.bytes.MEM_BANK_SEL = 0xff;
 	while (nread < length) {
+		if (drv_data->bank0.bytes.MEM_BANK_SEL != (uint8_t)(addr >> 8)) {
+			drv_data->bank0.bytes.MEM_BANK_SEL = (uint8_t)(addr >> 8);
+			rc |= icm20948_write(dev, ICM20948_BANK0, ICM20948_BANK0_MEM_BANK_SEL, &drv_data->bank0.bytes.MEM_BANK_SEL, 1);
+		}
+
 		drv_data->bank0.bytes.MEM_ADDR = addr & 0xff;
 		rc |= icm20948_write(dev, ICM20948_BANK0, ICM20948_BANK0_MEM_ADDR, &drv_data->bank0.bytes.MEM_ADDR, 1);
 		
-		chunksize = MIN(ICM20948_MAX_SERIAL_READ, MIN(DMP_MEM_BANK_SIZE-drv_data->bank0.bytes.MEM_ADDR, length));
+		chunksize = MIN(ICM20948_MAX_SERIAL_READ, MIN(DMP_MEM_BANK_SIZE - drv_data->bank0.bytes.MEM_ADDR, length));
 		rc |= icm20948_read(dev, ICM20948_BANK0, ICM20948_BANK0_MEM_R_W, data+nread, chunksize);
 
 		nread += chunksize;
@@ -177,25 +189,43 @@ int icm20948_mem_read(const struct device *dev, uint16_t addr, uint8_t *data, si
 
 }
 
-int icm20948_mem_write(const struct device *dev, uint16_t addr, const uint8_t *data, size_t length) {
+int icm20948_mem_write(const struct device *dev, uint16_t addr, const uint8_t *data, size_t length, bool verify) {
 	struct icm20948_data *drv_data = dev->data;
-	int rc;
+	int rc = 0;
 	unsigned int nwritten = 0;
 	size_t chunksize;
+	uint8_t verify_buf[ICM20948_MAX_SERIAL_WRITE];
 	
-	drv_data->bank0.bytes.MEM_BANK_SEL = addr >> 8;
-	rc = icm20948_write(dev, ICM20948_BANK0, ICM20948_BANK0_MEM_BANK_SEL, &drv_data->bank0.bytes.MEM_BANK_SEL, 1);
-
+	/* Use 0xFF as an invalid sentinel to force bank select on first iteration. */
+	drv_data->bank0.bytes.MEM_BANK_SEL = 0xff;
 	while (nwritten < length) {
+		if (drv_data->bank0.bytes.MEM_BANK_SEL != (uint8_t)(addr >> 8)) {
+			drv_data->bank0.bytes.MEM_BANK_SEL = (uint8_t)(addr >> 8);
+			rc |= icm20948_write(dev, ICM20948_BANK0, ICM20948_BANK0_MEM_BANK_SEL, &drv_data->bank0.bytes.MEM_BANK_SEL, 1);
+		}
+
 		drv_data->bank0.bytes.MEM_ADDR = addr & 0xff;
 		rc |= icm20948_write(dev, ICM20948_BANK0, ICM20948_BANK0_MEM_ADDR, &drv_data->bank0.bytes.MEM_ADDR, 1);
 		
-		chunksize = MIN(ICM20948_MAX_SERIAL_WRITE, MIN(DMP_MEM_BANK_SIZE-drv_data->bank0.bytes.MEM_ADDR, length));
-		rc |= icm20948_write(dev, ICM20948_BANK0, ICM20948_BANK0_MEM_R_W, data+nwritten, chunksize);
+		chunksize = MIN(ICM20948_MAX_SERIAL_WRITE, MIN(DMP_MEM_BANK_SIZE - drv_data->bank0.bytes.MEM_ADDR, length));
+		rc |= icm20948_write(dev, ICM20948_BANK0, ICM20948_BANK0_MEM_R_W, data + nwritten, chunksize);
 
-		nwritten+=chunksize;
+		// check if write was successful by reading back
+		if (verify) {
+			rc |= icm20948_write(dev, ICM20948_BANK0, ICM20948_BANK0_MEM_ADDR, &drv_data->bank0.bytes.MEM_ADDR, 1);
+			rc |= icm20948_read(dev, ICM20948_BANK0, ICM20948_BANK0_MEM_R_W, verify_buf, chunksize);
+			if (memcmp(data + nwritten, verify_buf, chunksize) != 0) {
+				LOG_ERR("Memory write verification failed at bank %d, address 0x%x.", drv_data->bank0.bytes.MEM_BANK_SEL, drv_data->bank0.bytes.MEM_ADDR);
+				return -EIO;
+			}
+		}
+
+		nwritten += chunksize;
 		addr += chunksize;
 		length -= chunksize;		
+	}
+	if (verify) {
+		LOG_DBG("Memory write verified successfully.");
 	}
 	return rc;
 

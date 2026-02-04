@@ -43,7 +43,7 @@ int ak09916_sample_fetch(const struct device *dev, enum sensor_channel chan) {
 
     ak09916_read(dev, AK09916_ADDR_STATUS_1, &data->registers.bytes.STATUS_1.byte, 9);
     if (!(data->registers.bytes.STATUS_1.bits.DRDY)) {
-        LOG_WRN("AK09916 data not ready.");
+        // LOG_WRN("AK09916 data not ready.");
         return -EAGAIN;
     }
 

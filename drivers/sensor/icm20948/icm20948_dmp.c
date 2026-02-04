@@ -1,4 +1,4 @@
-#include "icm20948_dmp_firmware.h"
+#include "icm20948_dmp.h"
 /* Firmware for ICM20948 DMP unit - 14301 bytes */
 const unsigned char icm20948_dmp_firmware[] = {
     /* bank # 0 */

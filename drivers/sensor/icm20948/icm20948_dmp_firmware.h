@@ -1,1 +1,0 @@
-extern const unsigned char icm20948_dmp_firmware[14301];
