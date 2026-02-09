@@ -20,30 +20,34 @@
 * OF THE SOFTWARE.
 * ________________________________________________________________________________________________________
 */
+#pragma once
+
 #define DEF_ST_ACCEL_FS                 2
 #define DEF_ST_GYRO_FS_DPS              250
 #define DEF_ST_SCALE                    32768
 #define DEF_SELFTEST_GYRO_SENS			(DEF_ST_SCALE / DEF_ST_GYRO_FS_DPS)
 #define DEF_ST_ACCEL_FS_MG				2000
 
+#define AK0991x_DEFAULT_I2C_ADDR	0x0C
+
 #ifndef INV20948_ABS
 #define INV20948_ABS(x) (((x) < 0) ? -(x) : (x))
 #endif
 
 /* Forward declaration */
-int icm20948_sensor_setup(void);
+int icm20948_sensor_setup(struct inv_icm20948 * icm_device);
 // void iddwrapper_protocol_event_cb(enum DynProtocolEtype etype, enum DynProtocolEid eid, const DynProtocolEdata_t * edata, void * cookie);
 // void iddwrapper_transport_event_cb(enum DynProTransportEvent e, union DynProTransportEventData data, void * cookie);
 // void sensor_event(const inv_sensor_event_t * event, void * arg);
 // int handle_command(enum DynProtocolEid eid, const DynProtocolEdata_t * edata, DynProtocolEdata_t * respdata);
-int icm20948_run_selftest(void);
+int icm20948_run_selftest(struct inv_icm20948 * icm_device);
 void inv_icm20948_get_st_bias(struct inv_icm20948 * s, int *gyro_bias, int *accel_bias, int * st_bias, int * unscaled);
 // void InvEMDFrontEnd_busyWaitUsHook(uint32_t us);
 // int InvEMDFrontEnd_isHwFlowCtrlSupportedHook(void);
 // int InvEMDFrontEnd_putcharHook(int c);
 // void build_sensor_event_data(void * context, uint8_t sensortype, uint64_t timestamp, const void * data, const void *arg);
 void inv_icm20948_sleep(int ms);
-int load_dmp3(void);
+int load_dmp3(struct inv_icm20948 * icm_device);
 void check_rc(int rc, const char * msg_context);
 
 // extern inv_icm20948_t icm_device;

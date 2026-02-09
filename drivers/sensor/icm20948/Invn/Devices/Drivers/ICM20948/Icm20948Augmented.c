@@ -1,7 +1,7 @@
 /*
 * ________________________________________________________________________________________________________
-* Copyright © 2014-2015 InvenSense Inc. Portions Copyright © 2014-2015 Movea. All rights reserved.
-* This software, related documentation and any modifications thereto (collectively “Software”) is subject
+* Copyright ï¿½ 2014-2015 InvenSense Inc. Portions Copyright ï¿½ 2014-2015 Movea. All rights reserved.
+* This software, related documentation and any modifications thereto (collectively ï¿½Softwareï¿½) is subject
 * to InvenSense and its licensors' intellectual property rights under U.S. and international copyright and
 * other intellectual property rights laws.
 * InvenSense and its licensors retain all intellectual property and proprietary rights in and to the Software
@@ -99,7 +99,7 @@ int inv_icm20948_augmented_sensors_get_linearacceleration(long linacc[3], const 
 }
 
 
-int inv_icm20948_augmented_sensors_get_orientation(long orientation[3], const long quat9axis_3e[4])
+int inv_icm20948_augmented_sensors_get_orientation(long orientation[3], const long quat9axis_3e[3])/*MODIFIED FROM int inv_icm20948_augmented_sensors_get_orientation(long orientation[3], const long quat9axis_3e[4])*/
 {
     long lQuat9axis4e[4];
 	long lMatrixQ30[9];       
@@ -125,13 +125,13 @@ int inv_icm20948_augmented_sensors_get_orientation(long orientation[3], const lo
 	orientation[1] = inv_icm20948_convert_mult_qfix_fxp(orientation[1], lRad2degQ16, 16);
 
 	// orientationFlt[2] = asinf ( matrixFlt[2][0]) * rad2deg;
-	// asin(x) = atan (x/sqrt(1-x²))
+	// asin(x) = atan (x/sqrt(1-xï¿½))
 	// atan2(y,x) = atan(y/x)
-	// asin(x) = atan2(x, sqrt(1-x²))
-	lMatrixQ30Square = inv_icm20948_convert_mult_qfix_fxp(lMatrixQ30[6], lMatrixQ30[6], 30); // x²
-	lMatrixQ30Square = (1UL << 30) - lMatrixQ30Square; // 1-x²
-	lMatrixQ30Square = inv_icm20948_convert_fast_sqrt_fxp(lMatrixQ30Square); // sqrt(1-x²)
-	orientation[2] = inv_icm20948_math_atan2_q15_fxp(lMatrixQ30[6] >> 15,  lMatrixQ30Square >> 15) << 1; // atan2(x, sqrt(1-x²))
+	// asin(x) = atan2(x, sqrt(1-xï¿½))
+	lMatrixQ30Square = inv_icm20948_convert_mult_qfix_fxp(lMatrixQ30[6], lMatrixQ30[6], 30); // xï¿½
+	lMatrixQ30Square = (1UL << 30) - lMatrixQ30Square; // 1-xï¿½
+	lMatrixQ30Square = inv_icm20948_convert_fast_sqrt_fxp(lMatrixQ30Square); // sqrt(1-xï¿½)
+	orientation[2] = inv_icm20948_math_atan2_q15_fxp(lMatrixQ30[6] >> 15,  lMatrixQ30Square >> 15) << 1; // atan2(x, sqrt(1-xï¿½))
 	orientation[2] = inv_icm20948_convert_mult_qfix_fxp(orientation[2], lRad2degQ16, 16); // * rad2deg
 
 	if (orientation[0] < 0)

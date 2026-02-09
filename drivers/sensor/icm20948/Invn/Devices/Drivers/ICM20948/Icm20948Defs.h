@@ -55,9 +55,9 @@ extern "C" {
 #define MPU_SUCCESS (0)
 #define MPU_COMPASS_NOT_FOUND (int)0x00ABCDEF
 
-#define MSEC_PER_SEC 1000
-#define NSEC_PER_MSEC 1000000
-#define NSEC_PER_SEC NSEC_PER_MSEC * MSEC_PER_SEC
+// #define MSEC_PER_SEC 1000
+// #define NSEC_PER_MSEC 1000000
+// #define NSEC_PER_SEC NSEC_PER_MSEC * MSEC_PER_SEC
 
 #define FIFO_DIVIDER 19
 
@@ -378,10 +378,10 @@ extern "C" {
 #define COMPASS_SLAVEADDR_AKM_BASE      0x0C
 #define COMPASS_SLAVEADDR_AKM           0x0E
     
-#define BIT(x) ( 1 << x )              
+// #define BIT(x) ( 1 << x )              
 
-#define ENABLE  1
-#define DISABLE 0
+// #define ENABLE  1
+// #define DISABLE 0
     
 // interrupt configurations related to HW register
 #define FSYNC_INT   BIT(7)

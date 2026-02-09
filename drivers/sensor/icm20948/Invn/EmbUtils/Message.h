@@ -47,12 +47,14 @@ extern "C" {
 #endif
 
 #include <stdarg.h>
+#include <zephyr/logging/log.h>
+LOG_MODULE_DECLARE(icm20948, CONFIG_SENSOR_LOG_LEVEL);
 
 /** @brief For eMD target, disable log by default
  *	If  compile switch is set for a compilation unit
  *	messages will be totally disabled by default
  */
-#if !defined(__linux) && !defined(_WIN32) && !defined(ARDUINO)
+#if !defined(__linux) && !defined(_WIN32) && !defined(ARDUINO) && !defined(CONFIG_LOG) // MODIFIED add CONFIG_LOG check
 	#define INV_MSG_DISABLE	1
 #endif
 
@@ -98,24 +100,37 @@ extern "C" {
 	#define _INV_MSG_SETUP_LEVEL(level)    (void)0
 	#define _INV_MSG_LEVEL                 INV_MSG_LEVEL_OFF
 #else
-	#define _INV_MSG(level, ...)           inv_msg(level, __VA_ARGS__)
- 	#define _INV_MSG_SETUP(level, printer) inv_msg_setup(level, printer)
- 	#define _INV_MSG_SETUP_LEVEL(level)    inv_msg_setup(level, inv_msg_printer_default)
-	#define _INV_MSG_SETUP_DEFAULT()       inv_msg_setup_default()
-	#define _INV_MSG_LEVEL                 inv_msg_get_level()
+	// #define _INV_MSG(level, ...)           inv_msg(level, __VA_ARGS__)
+	#define _INV_MSG(level, ...)           Z_LOG(level, __VA_ARGS__) /*MODIFIED*/
+	// #define _INV_MSG_SETUP(level, printer) inv_msg_setup(level, printer)
+	#define _INV_MSG_SETUP(level, printer) (void)0 /*MODIFIED*/
+ 	// #define _INV_MSG_SETUP_LEVEL(level)    inv_msg_setup(level, inv_msg_printer_default)
+	#define _INV_MSG_SETUP_LEVEL(level)    (void)0 /*MODIFIED*/
+	// #define _INV_MSG_SETUP_DEFAULT()       inv_msg_setup_default()
+	// #define _INV_MSG_LEVEL                 inv_msg_get_level()
+	#define _INV_MSG_LEVEL                 CONFIG_SENSOR_LOG_LEVEL /*MODIFIED*/
 #endif
 
 /** @brief message level definition
  */
-enum inv_msg_level {
-	INV_MSG_LEVEL_OFF     = 0,
-	INV_MSG_LEVEL_ERROR,
-	INV_MSG_LEVEL_WARNING,
-	INV_MSG_LEVEL_INFO,
-	INV_MSG_LEVEL_VERBOSE,
-	INV_MSG_LEVEL_DEBUG,
-	INV_MSG_LEVEL_MAX
-};
+// enum inv_msg_level {
+// 	INV_MSG_LEVEL_OFF     = 0,
+// 	INV_MSG_LEVEL_ERROR,
+// 	INV_MSG_LEVEL_WARNING,
+// 	INV_MSG_LEVEL_INFO,
+// 	INV_MSG_LEVEL_VERBOSE,
+// 	INV_MSG_LEVEL_DEBUG,
+// 	INV_MSG_LEVEL_MAX
+// };
+
+#define INV_MSG_LEVEL_OFF LOG_LEVEL_NONE /*MODIFIED*/
+#define INV_MSG_LEVEL_ERROR LOG_LEVEL_ERR /*MODIFIED*/
+#define INV_MSG_LEVEL_WARNING LOG_LEVEL_WRN /*MODIFIED*/
+#define INV_MSG_LEVEL_INFO LOG_LEVEL_INF /*MODIFIED*/
+#define INV_MSG_LEVEL_VERBOSE LOG_LEVEL_DBG /*MODIFIED*/
+#define INV_MSG_LEVEL_DEBUG LOG_LEVEL_DBG /*MODIFIED*/
+#define INV_MSG_LEVEL_MAX (LOG_LEVEL_DBG + 1) /*MODIFIED*/
+
 
 
 /** @brief Prototype for print routine function

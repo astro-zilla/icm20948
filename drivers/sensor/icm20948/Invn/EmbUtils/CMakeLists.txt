@@ -7,3 +7,4 @@ zephyr_library_sources(
     Message.c
     RingByteBuffer.c
 )
+zephyr_include_directories(..)

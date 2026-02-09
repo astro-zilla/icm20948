@@ -1,7 +1,7 @@
 /*
 * ________________________________________________________________________________________________________
-* Copyright © 2014-2015 InvenSense Inc. Portions Copyright © 2014-2015 Movea. All rights reserved.
-* This software, related documentation and any modifications thereto (collectively “Software”) is subject
+* Copyright ï¿½ 2014-2015 InvenSense Inc. Portions Copyright ï¿½ 2014-2015 Movea. All rights reserved.
+* This software, related documentation and any modifications thereto (collectively ï¿½Softwareï¿½) is subject
 * to InvenSense and its licensors' intellectual property rights under U.S. and international copyright and
 * other intellectual property rights laws.
 * InvenSense and its licensors retain all intellectual property and proprietary rights in and to the Software
@@ -54,7 +54,7 @@ int INV_EXPORT inv_icm20948_augmented_sensors_get_linearacceleration(long linacc
 * @param[in] quat9axis_3e 3 components input AGM-based quaternion in Q30
 * @return 0 in case of success, -1 for any error
 */
-int INV_EXPORT inv_icm20948_augmented_sensors_get_orientation(long orientation[3], const long quat9axis_3e[4]);
+int INV_EXPORT inv_icm20948_augmented_sensors_get_orientation(long orientation[3], const long quat9axis_3e[3]);/*MODIFIED, CORRECTED LENGTH OF quat9axis_3e to 3 from 4*/
 
 /** @brief Set ODR for one of the augmented sensor-related Android sensor
 * @param[in] androidSensor   Android sensor ID for which a new delay in to be applied

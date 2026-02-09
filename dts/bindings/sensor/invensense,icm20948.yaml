@@ -99,6 +99,14 @@ properties:
       Enable/Disable accelerometer digital low pass filter.
       Maps to ACCEL_FCHOICE field in Accelerometer Configuration setting.
 
+  mag-sr-div:
+    type: int
+    required: true
+    description: |
+      Default magnetometer sample rate divider.
+      rate = 100Hz / (1 + mag-smplrt-div)
+      Valid range: 0 - 255
+
   fifo-enable:
     type: boolean
     description: |

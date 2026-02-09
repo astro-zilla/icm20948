@@ -12,3 +12,4 @@ zephyr_library_sources(
     Icm20948Setup.c
     Icm20948Transport.c
 )
+zephyr_include_directories(..)

@@ -1,7 +1,7 @@
 /*
 * ________________________________________________________________________________________________________
-* Copyright © 2014-2015 InvenSense Inc. Portions Copyright © 2014-2015 Movea. All rights reserved.
-* This software, related documentation and any modifications thereto (collectively “Software”) is subject
+* Copyright ï¿½ 2014-2015 InvenSense Inc. Portions Copyright ï¿½ 2014-2015 Movea. All rights reserved.
+* This software, related documentation and any modifications thereto (collectively ï¿½Softwareï¿½) is subject
 * to InvenSense and its licensors' intellectual property rights under U.S. and international copyright and
 * other intellectual property rights laws.
 * InvenSense and its licensors retain all intellectual property and proprietary rights in and to the Software
@@ -14,6 +14,8 @@
 #include "Icm20948LoadFirmware.h"
 #include "Icm20948Defs.h"
 #include "Icm20948DataBaseDriver.h"
+#include "EmbUtils/Message.h"
+#include <zephyr/kernel.h>
 
 int inv_icm20948_firmware_load(struct inv_icm20948 * s, const unsigned char *data_start, unsigned short size_start, unsigned short load_addr)
 { 
@@ -22,7 +24,7 @@ int inv_icm20948_firmware_load(struct inv_icm20948 * s, const unsigned char *dat
     unsigned short memaddr;
     const unsigned char *data;
     unsigned short size;
-    unsigned char data_cmp[INV_MAX_SERIAL_READ];
+    unsigned char data_cmp[0x100];
     int flag = 0;
 
 	if(s->base_state.firmware_loaded)
@@ -33,18 +35,21 @@ int inv_icm20948_firmware_load(struct inv_icm20948 * s, const unsigned char *dat
     size = size_start;
     memaddr = load_addr;
     while (size > 0) {
-        write_size = min(size, INV_MAX_SERIAL_WRITE);
-        if ((memaddr & 0xff) + write_size > 0x100) {
-            // Moved across a bank
-            write_size = (memaddr & 0xff) + write_size - 0x100;
-        }
+        write_size = min(size, 0x100);
+        // if ((memaddr & 0xff) + write_size > 0x100) {
+        //     // Moved across a bank
+        //     write_size = (memaddr & 0xff) + write_size - 0x100;
+        // }
         result = inv_icm20948_write_mems(s, memaddr, write_size, (unsigned char *)data);
-        if (result)  
+        if (result) {
+            INV_MSG(INV_MSG_LEVEL_ERROR,"Error writing DMP firmware at memaddr 0x%04x", memaddr);
             return result;
+        }
         data += write_size;
         size -= write_size;
         memaddr += write_size;
     }
+    INV_MSG(INV_MSG_LEVEL_INFO,"DMP firmware written to memory, now verifying...");
 
     // Verify DMP memory
 
@@ -52,20 +57,25 @@ int inv_icm20948_firmware_load(struct inv_icm20948 * s, const unsigned char *dat
     size = size_start;
     memaddr = load_addr;
     while (size > 0) {
-        write_size = min(size, INV_MAX_SERIAL_READ);
-        if ((memaddr & 0xff) + write_size > 0x100) {
-            // Moved across a bank
-            write_size = (memaddr & 0xff) + write_size - 0x100;
-        }
+        write_size = min(size, 0x100);
+        // if ((memaddr & 0xff) + write_size > 0x100) {
+        //     // Moved across a bank
+        //     write_size = (memaddr & 0xff) + write_size - 0x100;
+        // }
         result = inv_icm20948_read_mems(s, memaddr, write_size, data_cmp);
-        if (result)
+        if (result) {
             flag++; // Error, DMP not written correctly
-        if (memcmp(data_cmp, data, write_size))
+            INV_MSG(INV_MSG_LEVEL_ERROR,"Error reading DMP firmware at memaddr 0x%04x", memaddr);
+        }
+        if (memcmp(data_cmp, data, write_size)) {
+            INV_MSG(INV_MSG_LEVEL_ERROR,"Error checking DMP firmware at memaddr 0x%04x", memaddr);
             return -1;
+        }
         data += write_size;
         size -= write_size;
         memaddr += write_size;
     }
+    INV_MSG(INV_MSG_LEVEL_INFO,"DMP firmware verified successfully!");
 
 #if defined(WIN32)   
     //if(!flag)
