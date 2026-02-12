@@ -1,7 +1,7 @@
 /*
 * ________________________________________________________________________________________________________
-* Copyright © 2014-2015 InvenSense Inc. Portions Copyright © 2014-2015 Movea. All rights reserved.
-* This software, related documentation and any modifications thereto (collectively “Software”) is subject
+* Copyright ï¿½ 2014-2015 InvenSense Inc. Portions Copyright ï¿½ 2014-2015 Movea. All rights reserved.
+* This software, related documentation and any modifications thereto (collectively ï¿½Softwareï¿½) is subject
 * to InvenSense and its licensors' intellectual property rights under U.S. and international copyright and
 * other intellectual property rights laws.
 * InvenSense and its licensors retain all intellectual property and proprietary rights in and to the Software
@@ -79,19 +79,19 @@ int INV_EXPORT inv_icm20948_dmp_process_fifo(struct inv_icm20948 * s, int *left_
 * @param[out] acl[3]	the accelerometer data 
 * @return 					0 on success, negative value on error.
 */		
-int INV_EXPORT inv_icm20948_dmp_get_accel(long acl[3]);
+int INV_EXPORT inv_icm20948_dmp_get_accel(struct inv_icm20948 * s, long acl[3]);
 
 /** @brief Gets the raw gyrometer data 
 * @param[out] raw_gyro[3]	the raw gyrometer data 
 * @return 						0 on success, negative value on error.
 */	
-int INV_EXPORT inv_icm20948_dmp_get_raw_gyro(short raw_gyro[3]);
+int INV_EXPORT inv_icm20948_dmp_get_raw_gyro(struct inv_icm20948 * s, short raw_gyro[3]);
  
 /** @brief Gets gyro bias
 * @param[out] quat[3]	Gyro bias x,y,z
 * @return 				0 on success, negative value on error.
 */	
-int INV_EXPORT inv_icm20948_dmp_get_gyro_bias(short gyro_bias[3]);
+int INV_EXPORT inv_icm20948_dmp_get_gyro_bias(struct inv_icm20948 * s, short gyro_bias[3]);
 
 /** @brief Gets calibrated gyro value based on raw gyro and gyro bias
 * @param[out] calibratedData[3]	Calibred Gyro x,y,z
@@ -105,81 +105,81 @@ int INV_EXPORT inv_icm20948_dmp_get_calibrated_gyro(signed long calibratedData[3
 * @param[out] quat[3]	the quaternion 6 axis data 
 * @return 				0 on success, negative value on error.
 */	
-int INV_EXPORT inv_icm20948_dmp_get_6quaternion(long quat[3]);
+int INV_EXPORT inv_icm20948_dmp_get_6quaternion(struct inv_icm20948 * s, long quat[3]);
 
 /** @brief Gets the quaternion  9 axis data 
 * @param[out] quat[3]	the quaternion 9 axis data 
 * @return 				0 on success, negative value on error.
 */	
-int INV_EXPORT inv_icm20948_dmp_get_9quaternion(long quat[3]);
+int INV_EXPORT inv_icm20948_dmp_get_9quaternion(struct inv_icm20948 * s, long quat[3]);
  
 /** @brief Gets the quaternion  GMRV data 
 * @param[out] quat[3]	the quaternion GMRV 6 axis data 
 * @return 				0 on success, negative value on error.
 */	
-int INV_EXPORT inv_icm20948_dmp_get_gmrvquaternion(long quat[3]);
+int INV_EXPORT inv_icm20948_dmp_get_gmrvquaternion(struct inv_icm20948 * s, long quat[3]);
 
 /** @brief Gets the raw compass data 
 * @param[out] cal_compass[3]	the raw compass data 
 * @return 						0 on success, negative value on error.
 */	
-int INV_EXPORT inv_icm20948_dmp_get_raw_compass(long raw_compass[3]);
+int INV_EXPORT inv_icm20948_dmp_get_raw_compass(struct inv_icm20948 * s, long raw_compass[3]);
 
 /** @brief Gets the calibrated compass data 
 * @param[out] cal_compass[3]	the calibrated compass data 
 * @return 						0 on success, negative value on error.
 */	
-int INV_EXPORT inv_icm20948_dmp_get_calibrated_compass(long cal_compass[3]);
+int INV_EXPORT inv_icm20948_dmp_get_calibrated_compass(struct inv_icm20948 * s, long cal_compass[3]);
 
 /** @brief Decodes the fifo packet 
 * @param[in] fifo_ptr 	pointer to the fifo data
 * @param[in] fd 		pointer to the fifo what contains the sensor data
 * @return 				0 on success, negative value on error.
 */	
-int INV_EXPORT inv_icm20948_inv_decode_one_ivory_fifo_packet(struct inv_icm20948 * s, struct inv_fifo_decoded_t *fd, const unsigned char *fifo_ptr);
+int INV_EXPORT inv_icm20948_inv_decode_one_ivory_fifo_packet(struct inv_icm20948 * s, const unsigned char *fifo_ptr);
 
 /** @brief Gets the state of the BAC sensor
 * @param[in] bac_state	pointer for recuperate the state of BAC
 * @return 					0 on success, negative value on error.
 */	
-int INV_EXPORT inv_icm20948_dmp_get_bac_state(uint16_t *bac_state);
+int INV_EXPORT inv_icm20948_dmp_get_bac_state(struct inv_icm20948 * s, uint16_t *bac_state);
 
 /** @brief Gets the timestamp of the BAC sensor
 * @param[in] bac_ts	pointer for recuperate the timestamp of BAC
 * @return 					0 on success, negative value on error.
 */	
-int INV_EXPORT inv_icm20948_dmp_get_bac_ts(long *bac_ts);
+int INV_EXPORT inv_icm20948_dmp_get_bac_ts(struct inv_icm20948 * s, long *bac_ts);
 
 /** @brief Gets the state of the pick up sensor
 * @param[in] flip_pickup	pointer for recuperate the state of pickup
 * @return 					0 on success, negative value on error.
 */	
-int INV_EXPORT inv_icm20948_dmp_get_flip_pickup_state(uint16_t *flip_pickup);
+int INV_EXPORT inv_icm20948_dmp_get_flip_pickup_state(struct inv_icm20948 * s, uint16_t *flip_pickup);
 
 /** @brief Returns the accelerometer accuracy 
 * @return the accelerometer accuracy value
 */	
-int INV_EXPORT inv_icm20948_get_accel_accuracy(void);
+int INV_EXPORT inv_icm20948_get_accel_accuracy(struct inv_icm20948 * s);
 
 /** @brief Returns the gyrometer accuracy 
 * @return the gyrometer accuracy value
 */	
-int INV_EXPORT inv_icm20948_get_gyro_accuracy(void);
+int INV_EXPORT inv_icm20948_get_gyro_accuracy(struct inv_icm20948 * s);
 
 /** @brief Returns the magnetometer accuracy 
 * @return the magnetometer accuracy value
 */
-int INV_EXPORT inv_icm20948_get_mag_accuracy(void);
+int INV_EXPORT inv_icm20948_get_mag_accuracy(struct inv_icm20948 * s);
 
 /** @brief Returns the geomagnetic rotation vector accuracy 
 * @return the geomagnetic rotation vector accuracy in Q29
 */	
-int INV_EXPORT inv_icm20948_get_gmrv_accuracy(void);
+int INV_EXPORT inv_icm20948_get_gmrv_accuracy(struct inv_icm20948 * s);
 
 /** @brief Returns the rotation vector accuracy 
 * @return the rotation vector accuracy value in Q29
 */	
-int INV_EXPORT inv_icm20948_get_rv_accuracy(void);
+int INV_EXPORT inv_icm20948_get_rv_accuracy(struct inv_icm20948 * s);
 
 /** @brief Resets the fifo
 * @param[in] value 	0=no, 1=yes

@@ -589,7 +589,7 @@ int inv_icm20948_poll_sensor(struct inv_icm20948 * s, void * context,
 					signed long  lBiasGyroQ20[3] = {0};
 
 					/* Read raw gyro out of DMP FIFO and convert it from Q15 raw data format to radian per seconds in Android format */
-					inv_icm20948_dmp_get_raw_gyro(short_data);
+					inv_icm20948_dmp_get_raw_gyro(s, short_data);
 					lRawGyroQ15[0] = (long) short_data[0];
 					lRawGyroQ15[1] = (long) short_data[1];
 					lRawGyroQ15[2] = (long) short_data[2];
@@ -603,14 +603,14 @@ int inv_icm20948_poll_sensor(struct inv_icm20948 * s, void * context,
 					}
 
 					/* Read bias gyro out of DMP FIFO and convert it from Q20 raw data format to radian per seconds in Android format */
-					inv_icm20948_dmp_get_gyro_bias(short_data);
+					inv_icm20948_dmp_get_gyro_bias(s, short_data);
 					lBiasGyroQ20[0] = (long) short_data[0];
 					lBiasGyroQ20[1] = (long) short_data[1];
 					lBiasGyroQ20[2] = (long) short_data[2];
 					inv_icm20948_convert_dmp3_to_body(s, lBiasGyroQ20, lScaleDeg_bias/(1L<<20), gyro_bias_float);
 
 					/* Extract accuracy and calibrated gyro data based on raw/bias data if calibrated gyro sensor is enabled */
-					gyro_accuracy = inv_icm20948_get_gyro_accuracy();
+					gyro_accuracy = inv_icm20948_get_gyro_accuracy(s);
 					/* If accuracy has changed previously we update the new accuracy the same time as bias*/
 					if(s->set_accuracy){
 						s->set_accuracy = 0;
@@ -650,7 +650,7 @@ int inv_icm20948_poll_sensor(struct inv_icm20948 * s, void * context,
 				if (header & ACCEL_SET) {
 					float scale;
 					/* Read calibrated accel out of DMP FIFO and convert it from Q25 raw data format to m/s² in Android format */
-					inv_icm20948_dmp_get_accel(long_data);
+					inv_icm20948_dmp_get_accel(s, long_data);
 
 					if(inv_icm20948_ctrl_androidSensor_enabled(s, ANDROID_SENSOR_RAW_ACCELEROMETER) && !skip_sensor(s, ANDROID_SENSOR_RAW_ACCELEROMETER)) {
 						long out[3];
@@ -666,7 +666,7 @@ int inv_icm20948_poll_sensor(struct inv_icm20948 * s, void * context,
 					}
 					if((inv_icm20948_ctrl_androidSensor_enabled(s, ANDROID_SENSOR_ACCELEROMETER) && !skip_sensor(s, ANDROID_SENSOR_ACCELEROMETER)) ||
 						(inv_icm20948_ctrl_androidSensor_enabled(s, ANDROID_SENSOR_LINEAR_ACCELERATION))) {
-							accel_accuracy = inv_icm20948_get_accel_accuracy();
+							accel_accuracy = inv_icm20948_get_accel_accuracy(s);
 							scale = (1 << inv_icm20948_get_accel_fullscale(s)) * 2.f / (1L<<30); // Convert from raw units to g's
 
 							inv_icm20948_convert_dmp3_to_body(s, long_data, scale, accel_float);
@@ -682,9 +682,9 @@ int inv_icm20948_poll_sensor(struct inv_icm20948 * s, void * context,
 					float scale;
 
 					/* Read calibrated compass out of DMP FIFO and convert it from Q16 raw data format to µT in Android format */
-					inv_icm20948_dmp_get_calibrated_compass(long_data);
+					inv_icm20948_dmp_get_calibrated_compass(s, long_data);
 
-					compass_accuracy = inv_icm20948_get_mag_accuracy();
+					compass_accuracy = inv_icm20948_get_mag_accuracy(s);
 					scale = DMP_UNIT_TO_FLOAT_COMPASS_CONVERSION;
 					inv_icm20948_convert_dmp3_to_body(s, long_data, scale, compass_float);
 					if(inv_icm20948_ctrl_androidSensor_enabled(s, ANDROID_SENSOR_GEOMAGNETIC_FIELD) && !skip_sensor(s, ANDROID_SENSOR_GEOMAGNETIC_FIELD)) {
@@ -696,7 +696,7 @@ int inv_icm20948_poll_sensor(struct inv_icm20948 * s, void * context,
 				/* Raw compass sample available from DMP FIFO */
 				if (header & CPASS_SET) {
 					/* Read calibrated compass out of DMP FIFO and convert it from Q16 raw data format to µT in Android format */
-					inv_icm20948_dmp_get_raw_compass(long_data);
+					inv_icm20948_dmp_get_raw_compass(s, long_data);
 					compass_raw_float[0] = long_data[0] * DMP_UNIT_TO_FLOAT_COMPASS_CONVERSION;
 					compass_raw_float[1] = long_data[1] * DMP_UNIT_TO_FLOAT_COMPASS_CONVERSION;
 					compass_raw_float[2] = long_data[2] * DMP_UNIT_TO_FLOAT_COMPASS_CONVERSION;
@@ -713,7 +713,7 @@ int inv_icm20948_poll_sensor(struct inv_icm20948 * s, void * context,
 						raw_bias_mag[4] = mag_bias[1] * DMP_UNIT_TO_FLOAT_COMPASS_CONVERSION;
 						raw_bias_mag[5] = mag_bias[2] * DMP_UNIT_TO_FLOAT_COMPASS_CONVERSION;
 
-						compass_accuracy = inv_icm20948_get_mag_accuracy();
+						compass_accuracy = inv_icm20948_get_mag_accuracy(s);
 						s->timestamp[INV_ICM20948_SENSOR_MAGNETIC_FIELD_UNCALIBRATED] += s->sensorlist[INV_ICM20948_SENSOR_MAGNETIC_FIELD_UNCALIBRATED].odr_applied_us;
 						/* send raw float and bias for uncal mag*/
 						handler(context, INV_ICM20948_SENSOR_MAGNETIC_FIELD_UNCALIBRATED, s->timestamp[INV_ICM20948_SENSOR_MAGNETIC_FIELD_UNCALIBRATED],
@@ -725,7 +725,7 @@ int inv_icm20948_poll_sensor(struct inv_icm20948 * s, void * context,
 					long gravityQ16[3];
 					float ref_quat[4];
 					/* Read 6 axis quaternion out of DMP FIFO in Q30 */
-					inv_icm20948_dmp_get_6quaternion(long_quat);
+					inv_icm20948_dmp_get_6quaternion(s, long_quat);
 					if(inv_icm20948_ctrl_androidSensor_enabled(s, ANDROID_SENSOR_GAME_ROTATION_VECTOR) && !skip_sensor(s, ANDROID_SENSOR_GAME_ROTATION_VECTOR)) {
 						/* and convert it from Q30 DMP format to Android format only if GRV sensor is enabled */
 						inv_icm20948_convert_rotation_vector(s, long_quat, grv_float);
@@ -771,13 +771,13 @@ int inv_icm20948_poll_sensor(struct inv_icm20948 * s, void * context,
 				if (header & QUAT9_SET) {
 					float ref_quat[4];
 					/* Read 9 axis quaternion out of DMP FIFO in Q30 */
-					inv_icm20948_dmp_get_9quaternion(long_quat);
+					inv_icm20948_dmp_get_9quaternion(s, long_quat);
 					if(inv_icm20948_ctrl_androidSensor_enabled(s, ANDROID_SENSOR_ROTATION_VECTOR) && !skip_sensor(s, ANDROID_SENSOR_ROTATION_VECTOR)) {
 						/* and convert it from Q30 DMP format to Android format only if RV sensor is enabled */
 						inv_icm20948_convert_rotation_vector(s, long_quat, rv_float);
 						/* Read rotation vector heading accuracy out of DMP FIFO in Q29*/
 						{
-							float rv_accur = inv_icm20948_get_rv_accuracy();
+							float rv_accur = inv_icm20948_get_rv_accuracy(s);
 							rv_accuracy = rv_accur/(float)(1ULL << (29));
 						}
 						ref_quat[0] = rv_float[3];
@@ -804,12 +804,12 @@ int inv_icm20948_poll_sensor(struct inv_icm20948 * s, void * context,
 				if (header & GEOMAG_SET) {
 					float ref_quat[4];
 					/* Read 6 axis quaternion out of DMP FIFO in Q30 and convert it to Android format */
-					inv_icm20948_dmp_get_gmrvquaternion(long_quat);
+					inv_icm20948_dmp_get_gmrvquaternion(s, long_quat);
 					if(inv_icm20948_ctrl_androidSensor_enabled(s, ANDROID_SENSOR_GEOMAGNETIC_ROTATION_VECTOR) && !skip_sensor(s, ANDROID_SENSOR_GEOMAGNETIC_ROTATION_VECTOR)) {
 						inv_icm20948_convert_rotation_vector(s, long_quat, gmrv_float);
 						/* Read geomagnetic rotation vector heading accuracy out of DMP FIFO in Q29*/
 						{
-							float gmrv_acc = inv_icm20948_get_gmrv_accuracy();
+							float gmrv_acc = inv_icm20948_get_gmrv_accuracy(s);
 							gmrv_accuracy = gmrv_acc/(float)(1ULL << (29));
 						}
 						ref_quat[0] = gmrv_float[3];
@@ -842,8 +842,8 @@ int inv_icm20948_poll_sensor(struct inv_icm20948 * s, void * context,
 					activity type is a set of 2 bytes :
 					- high byte indicates activity start
 					- low byte indicates activity end */
-					inv_icm20948_dmp_get_bac_state(&bac_state);
-					inv_icm20948_dmp_get_bac_ts(&bac_ts);
+					inv_icm20948_dmp_get_bac_state(s, &bac_state);
+					inv_icm20948_dmp_get_bac_ts(s, &bac_ts);
 					//Map according to dmp bac events
 					for(i = 0; i < 6; i++) {
 						if ((bac_state >> 8) & map[i].act_id){
@@ -871,7 +871,7 @@ int inv_icm20948_poll_sensor(struct inv_icm20948 * s, void * context,
 				/* Pickup sample available from DMP FIFO */
 				if (header2 & FLIP_PICKUP_SET) {
 					/* Read pickup type and associated timestamp out of DMP FIFO */
-					inv_icm20948_dmp_get_flip_pickup_state(&pickup_state);
+					inv_icm20948_dmp_get_flip_pickup_state(s, &pickup_state);
 					handler(context, INV_ICM20948_SENSOR_FLIP_PICKUP, s->timestamp[INV_ICM20948_SENSOR_FLIP_PICKUP], &pickup_state, 0);
 				}
 

@@ -303,9 +303,9 @@ int inv_icm20948_read_mems(struct inv_icm20948 * s, unsigned short reg, unsigned
 		}
 	}
 
-	//Enable LP_EN if we disabled it at begining of this function.
+	//Restore LP_EN if we disabled it at begining of this function.
 	if(check_reg_access_lp_disable(s, reg))
-		result |= inv_icm20948_set_chip_power_state(s, CHIP_LP_ENABLE, 1);
+		result |= inv_icm20948_set_chip_power_state(s, CHIP_LP_ENABLE, power_state & CHIP_LP_ENABLE);
 
 	return result;
 }
@@ -368,8 +368,8 @@ int inv_icm20948_write_mems(struct inv_icm20948 * s, unsigned short reg, unsigne
 		reg += thisLen;
 	}
 
-	//Enable LP_EN since we disabled it at begining of this function.
-	result |= inv_icm20948_set_chip_power_state(s, CHIP_LP_ENABLE, 1);
+	//Restore LP_EN since we disabled it at begining of this function.
+	result |= inv_icm20948_set_chip_power_state(s, CHIP_LP_ENABLE, power_state & CHIP_LP_ENABLE);
 
 	return result;
 }

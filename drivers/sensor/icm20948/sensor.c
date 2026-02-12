@@ -27,28 +27,18 @@
 #include "Invn/Devices/Drivers/Icm20948/Icm20948MPUFifoControl.h"
 #include "Invn/Devices/Drivers/Ak0991x/Ak0991x.h"
 #include "Invn/Devices/SensorTypes.h"
-// #include "Invn/Devices/SensorConfig.h"
-// #include "Invn/EmbUtils/InvScheduler.h"
-// #include "Invn/EmbUtils/RingByteBuffer.h"
+#include "Invn/Devices/Drivers/ICM20948/Icm20948DataBaseDriver.h"
+#include "Invn/Devices/Drivers/ICM20948/Icm20948Defs.h"
 #include "Invn/EmbUtils/Message.h"
 #include "Invn/EmbUtils/ErrorHelper.h"
-// #include "Invn/EmbUtils/DataConverter.h"
-// #include "Invn/EmbUtils/RingBuffer.h"
-// #include "Invn/DynamicProtocol/DynProtocol.h"
-// #include "Invn/DynamicProtocol/DynProtocolTransportUart.h"
 
-/* Atmel system */ 
-// #include "system.h"
 #define AK0991x_DEFAULT_I2C_ADDR 0x0C
-/* TDK Sensor */
-#include "sensor.h"
-
-// #include "ASF/sam/drivers/pio/pio.h"
-// #include "ASF/sam/drivers/pio/pio_handler.h"
-// #include "ASF/sam/drivers/twi/twi.h"
-// #include "ASF/sam/drivers/tc/tc.h"
 
 #include "main.h"
+#include "sensor.h"
+
+#include <zephyr/drivers/sensor.h>
+#include <zephyr/sys/byteorder.h>
 
 static const uint8_t dmp3_image[] = {
 #include "icm20948_img.dmp3a.h"
@@ -110,8 +100,8 @@ static uint8_t convert_to_generic_ids[INV_ICM20948_SENSOR_MAX] = {
 // static void convert_sensor_event_to_dyn_prot_data(const inv_sensor_event_t * event, VSensorDataAny * vsensor_data);
 // static enum inv_icm20948_sensor idd_sensortype_conversion(int sensor);
 static void icm20948_apply_mounting_matrix(struct inv_icm20948 * icm_device);
-static void icm20948_set_fsr(struct inv_icm20948 * icm_device);
-static uint8_t icm20948_get_grv_accuracy(void);
+static void icm20948_set_fsr(struct inv_icm20948 * icm_device, const struct icm20948_config * cfg);
+static uint8_t icm20948_get_grv_accuracy(struct inv_icm20948 * s);
 
 /*
 * Sleep implementation for ICM20948
@@ -139,18 +129,30 @@ static void icm20948_apply_mounting_matrix(struct inv_icm20948 * icm_device){
 	}
 }
 
-static void icm20948_set_fsr(struct inv_icm20948 * icm_device){
-	inv_icm20948_set_fsr(icm_device, INV_ICM20948_SENSOR_RAW_ACCELEROMETER, (const void *)&icm_device->base_state.accel_fullscale);
-	inv_icm20948_set_fsr(icm_device, INV_ICM20948_SENSOR_ACCELEROMETER, (const void *)&icm_device->base_state.accel_fullscale);
-	inv_icm20948_set_fsr(icm_device, INV_ICM20948_SENSOR_RAW_GYROSCOPE, (const void *)&icm_device->base_state.gyro_fullscale);
-	inv_icm20948_set_fsr(icm_device, INV_ICM20948_SENSOR_GYROSCOPE, (const void *)&icm_device->base_state.gyro_fullscale);
-	inv_icm20948_set_fsr(icm_device, INV_ICM20948_SENSOR_GYROSCOPE_UNCALIBRATED, (const void *)&icm_device->base_state.gyro_fullscale);
+static void icm20948_set_fsr(struct inv_icm20948 * icm_device, const struct icm20948_config * cfg){
+	int rc = 0;
+	rc |= inv_icm20948_set_accel_fullscale(icm_device, cfg->accel_fullscale);
+	rc |= inv_icm20948_set_gyro_fullscale(icm_device, cfg->gyro_fullscale);
+	if (rc != 0) {
+		INV_MSG(INV_MSG_LEVEL_ERROR, "Failed to set FSR");
+	}
 }
 
-int icm20948_sensor_setup(struct inv_icm20948 * icm_device){
+static void icm20948_set_sf(struct inv_icm20948 * icm_device, const struct icm20948_config * cfg){
+	int rc = 0;
+	rc |= inv_icm20948_set_gyro_divider(icm_device, cfg->gyro_div);
+	rc |= inv_icm20948_set_accel_divider(icm_device, cfg->accel_div);
+	rc |= inv_icm20948_set_secondary_divider(icm_device, cfg->secondary_div);
+	if (rc != 0) {
+		INV_MSG(INV_MSG_LEVEL_ERROR, "Failed to set sample rate divider");
+	}
+}
+
+int icm20948_sensor_setup(struct inv_icm20948 * icm_device, const struct icm20948_config * cfg){
 	int rc;
 	uint8_t i, whoami = 0xff;
 
+	inv_icm20948_soft_reset(icm_device);
 	/*
 	* Just get the whoami
 	*/
@@ -175,27 +177,28 @@ int icm20948_sensor_setup(struct inv_icm20948 * icm_device){
 
 	if(i == sizeof(EXPECTED_WHOAMI)/sizeof(EXPECTED_WHOAMI[0])) {
 		INV_MSG(INV_MSG_LEVEL_ERROR, "Bad WHOAMI value. Got 0x%02x.", whoami);
-		return rc;
+		return -EXDEV;
 	}
 
 	/* Setup accel and gyro mounting matrix and associated angle for current board */
+	inv_icm20948_init_structure(icm_device);
 	inv_icm20948_init_matrix(icm_device);
+	inv_icm20948_init_scale(icm_device);
 
-	/* set default power mode */
-	INV_MSG(INV_MSG_LEVEL_VERBOSE, "Putting Icm20948 in sleep mode...");
-	rc=-1;
-	i=0;
-	while (rc!=0) {
-		rc = inv_icm20948_initialize(icm_device, dmp3_image, sizeof(dmp3_image));
-		if (rc != 0) {
-			if (i++ > 5) {
-				INV_MSG(INV_MSG_LEVEL_ERROR, "Initialization failed after 5 attempts. Aborting...");
-				return rc;
-			}
-			INV_MSG(INV_MSG_LEVEL_WARNING, "Initialization failed. Trying again...");
-		} else {
-			INV_MSG(INV_MSG_LEVEL_INFO, "Initialization successful.");
-		}
+	/* Load DMP3 firmware */
+	INV_MSG(INV_MSG_LEVEL_INFO, "Initializing DMP...");
+	rc = inv_icm20948_initialize(icm_device, dmp3_image, sizeof(dmp3_image));
+	if (rc != 0) {
+		INV_MSG(INV_MSG_LEVEL_ERROR, "DMP Initialization failed");
+		return rc;
+	}
+
+	/* Initialize auxiliary sensors */
+	inv_icm20948_register_aux_compass(icm_device, INV_ICM20948_COMPASS_ID_AK09916, AK0991x_DEFAULT_I2C_ADDR);
+	rc = inv_icm20948_initialize_auxiliary(icm_device);
+	if (rc == -1) {
+		INV_MSG(INV_MSG_LEVEL_ERROR, "Compass not detected...");
+		return -EIO;
 	}
 
 	/*
@@ -203,19 +206,17 @@ int icm20948_sensor_setup(struct inv_icm20948 * icm_device){
 	*/
 	INV_MSG(INV_MSG_LEVEL_INFO, "Booting up icm20948...");
 
-	/* Initialize auxiliary sensors */
-	inv_icm20948_register_aux_compass(icm_device, INV_ICM20948_COMPASS_ID_AK09916, AK0991x_DEFAULT_I2C_ADDR);
-	rc = inv_icm20948_initialize_auxiliary(icm_device);
-	if (rc == -1) {
-		INV_MSG(INV_MSG_LEVEL_ERROR, "Compass not detected...");
-	}
-
 	icm20948_apply_mounting_matrix(icm_device);
-
-	icm20948_set_fsr(icm_device);
 
 	/* re-initialize base state structure */
 	inv_icm20948_init_structure(icm_device);
+
+	/* Set config settings */
+	icm20948_set_fsr(icm_device, cfg);
+	icm20948_set_sf(icm_device, cfg);
+
+	/* Setup secondary i2c bus */
+	inv_icm20948_set_secondary(icm_device);
 
 	/* we should be good to go ! */
 	INV_MSG(INV_MSG_LEVEL_VERBOSE, "We're good to go !");
@@ -231,6 +232,87 @@ void check_rc(int rc, const char * msg_context){
 		INV_MSG(INV_MSG_LEVEL_ERROR, "%s: error %d (%s)", msg_context, rc, inv_error_str(rc));
 		while(1);
 	}
+}
+
+int icm20948_channel_get(const struct device *dev,
+			    enum sensor_channel chan,
+			    struct sensor_value *val)
+{
+	struct inv_icm20948 * s = dev->data;
+	switch (chan) {
+	case SENSOR_CHAN_ACCEL_XYZ:
+		sensor_value_from_float(&val[0], s->sample.accel[0]);
+		sensor_value_from_float(&val[1], s->sample.accel[1]);
+		sensor_value_from_float(&val[2], s->sample.accel[2]);
+		break;
+	case SENSOR_CHAN_GYRO_XYZ:
+		sensor_value_from_float(&val[0], s->sample.gyro[0]);
+		sensor_value_from_float(&val[1], s->sample.gyro[1]);
+		sensor_value_from_float(&val[2], s->sample.gyro[2]);
+		break;
+	case SENSOR_CHAN_MAGN_XYZ:
+		sensor_value_from_float(&val[0], s->sample.compass[0]);
+		sensor_value_from_float(&val[1], s->sample.compass[1]);
+		sensor_value_from_float(&val[2], s->sample.compass[2]);
+		break;
+	case SENSOR_CHAN_DIE_TEMP:
+		sensor_value_from_float(&val[0], s->sample.die_temp);
+		break;
+	default:
+		INV_MSG(INV_MSG_LEVEL_ERROR, "Channel not supported: %d", chan);
+		return -ENOTSUP;
+	}
+	return 0;
+}
+
+int icm20948_sample_fetch(const struct device *dev,
+				enum sensor_channel chan)
+{
+	struct inv_icm20948 * s = dev->data;
+	short hw_reg_data[3];
+	static const float pi = 3.1415926535897932384626433832795f;
+	static const float gyro_fac = pi * 125.f / 180.f;
+	static const float g = 9.80665f;
+	float scale;
+	int rc=0;
+
+
+	switch (chan) {
+	case SENSOR_CHAN_ACCEL_XYZ:
+		rc |= inv_icm20948_read_mems_reg(s, REG_ACCEL_XOUT_H_SH, 6, (unsigned char *)hw_reg_data);
+		scale = g / (float)(1 << (14-s->base_state.accel_fullscale));
+		s->sample.accel[0] = scale * (float)(short)sys_be16_to_cpu(hw_reg_data[0]);
+		s->sample.accel[1] = scale * (float)(short)sys_be16_to_cpu(hw_reg_data[1]);
+		s->sample.accel[2] = scale * (float)(short)sys_be16_to_cpu(hw_reg_data[2]);
+		break;
+	case SENSOR_CHAN_GYRO_XYZ:
+		rc |= inv_icm20948_read_mems_reg(s, REG_GYRO_XOUT_H_SH, 6, (unsigned char *)hw_reg_data);
+		scale = gyro_fac / (float)(1 << (14-s->base_state.gyro_fullscale));
+		s->sample.gyro[0] = scale * (float)(short)sys_be16_to_cpu(hw_reg_data[0]);
+		s->sample.gyro[1] = scale * (float)(short)sys_be16_to_cpu(hw_reg_data[1]);
+		s->sample.gyro[2] = scale * (float)(short)sys_be16_to_cpu(hw_reg_data[2]);
+		break;
+	case SENSOR_CHAN_DIE_TEMP:
+		rc |= inv_icm20948_read_mems_reg(s, REG_TEMPERATURE, 2, (unsigned char *)hw_reg_data);
+		s->sample.die_temp = 21.f + (float)(short)sys_be16_to_cpu(hw_reg_data[0]) / 333.87f;
+		break;
+	case SENSOR_CHAN_MAGN_XYZ:
+		rc |= inv_icm20948_read_mems_reg(s, REG_EXT_SLV_SENS_DATA_00, 6, (unsigned char *)hw_reg_data);
+		s->sample.compass[0] = (float)(short)sys_le16_to_cpu(hw_reg_data[0]) * 0.15f;
+		s->sample.compass[1] = (float)(short)sys_le16_to_cpu(hw_reg_data[1]) * 0.15f;
+		s->sample.compass[2] = (float)(short)sys_le16_to_cpu(hw_reg_data[2]) * 0.15f;
+		break;
+	case SENSOR_CHAN_ALL:
+		rc |= icm20948_sample_fetch(dev, SENSOR_CHAN_ACCEL_XYZ);
+		rc |= icm20948_sample_fetch(dev, SENSOR_CHAN_GYRO_XYZ);
+		rc |= icm20948_sample_fetch(dev, SENSOR_CHAN_DIE_TEMP);
+		rc |= icm20948_sample_fetch(dev, SENSOR_CHAN_MAGN_XYZ);
+		break;
+	default:
+		INV_MSG(INV_MSG_LEVEL_ERROR, "Channel not supported: %d", chan);
+		return -ENOTSUP;
+	}
+	return rc;
 }
 
 /*
@@ -327,12 +409,12 @@ void check_rc(int rc, const char * msg_context){
 // 	}
 // }
 
-static uint8_t icm20948_get_grv_accuracy(void){
+static uint8_t icm20948_get_grv_accuracy(struct inv_icm20948 * s){
 	uint8_t accel_accuracy;
 	uint8_t gyro_accuracy;
 
-	accel_accuracy = (uint8_t)inv_icm20948_get_accel_accuracy();
-	gyro_accuracy = (uint8_t)inv_icm20948_get_gyro_accuracy();
+	accel_accuracy = (uint8_t)inv_icm20948_get_accel_accuracy(s);
+	gyro_accuracy = (uint8_t)inv_icm20948_get_gyro_accuracy(s);
 	return (min(accel_accuracy, gyro_accuracy));
 }
 
@@ -364,7 +446,7 @@ static uint8_t icm20948_get_grv_accuracy(void){
 // 		break;
 // 	case INV_SENSOR_TYPE_GRAVITY:
 // 		memcpy(event.data.acc.vect, data, sizeof(event.data.acc.vect));
-// 		event.data.acc.accuracy_flag = inv_icm20948_get_accel_accuracy();
+// 		event.data.acc.accuracy_flag = inv_icm20948_get_accel_accuracy(s);
 // 		break;
 // 	case INV_SENSOR_TYPE_LINEAR_ACCELERATION:
 // 	case INV_SENSOR_TYPE_ACCELEROMETER:
@@ -382,7 +464,7 @@ static uint8_t icm20948_get_grv_accuracy(void){
 // 		break;
 // 	case INV_SENSOR_TYPE_GAME_ROTATION_VECTOR:
 // 		memcpy(event.data.quaternion.quat, data, sizeof(event.data.quaternion.quat));
-// 		event.data.quaternion.accuracy_flag = icm20948_get_grv_accuracy();
+// 		event.data.quaternion.accuracy_flag = icm20948_get_grv_accuracy(s);
 // 		break;
 // 	case INV_SENSOR_TYPE_BAC:
 // 		memcpy(&(event.data.bac.event), data, sizeof(event.data.bac.event));
@@ -795,9 +877,9 @@ int icm20948_run_selftest(struct inv_icm20948 * icm_device){
 			rc = INV_ERROR;
 		}
 
-		/* It's advised to re-init the icm20948 device after self-test for normal use */
-		icm20948_sensor_setup(icm_device);
 		inv_icm20948_get_st_bias(icm_device, gyro_bias_regular, accel_bias_regular, raw_bias, unscaled_bias);
+		dmp_icm20948_set_bias_gyr(icm_device, &raw_bias[0]);
+		dmp_icm20948_set_bias_acc(icm_device, &raw_bias[3]);
 		INV_MSG(INV_MSG_LEVEL_INFO, "GYR bias (FS=250dps) (dps): x=%f, y=%f, z=%f", (double)(raw_bias[0] / (double)(1 << 16)), (double)(raw_bias[1] / (double)(1 << 16)), (double)(raw_bias[2] / (double)(1 << 16)));
 		INV_MSG(INV_MSG_LEVEL_INFO, "ACC bias (FS=2g) (g): x=%f, y=%f, z=%f", (double)(raw_bias[0 + 3] / (double)(1 << 16)), (double)(raw_bias[1 + 3] / (double)(1 << 16)), (double)(raw_bias[2 + 3] / (double)(1 << 16)));
 	}

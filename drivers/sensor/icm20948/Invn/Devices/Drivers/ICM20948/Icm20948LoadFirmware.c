@@ -15,7 +15,6 @@
 #include "Icm20948Defs.h"
 #include "Icm20948DataBaseDriver.h"
 #include "EmbUtils/Message.h"
-#include <zephyr/kernel.h>
 
 int inv_icm20948_firmware_load(struct inv_icm20948 * s, const unsigned char *data_start, unsigned short size_start, unsigned short load_addr)
 { 
@@ -36,20 +35,16 @@ int inv_icm20948_firmware_load(struct inv_icm20948 * s, const unsigned char *dat
     memaddr = load_addr;
     while (size > 0) {
         write_size = min(size, 0x100);
-        // if ((memaddr & 0xff) + write_size > 0x100) {
-        //     // Moved across a bank
-        //     write_size = (memaddr & 0xff) + write_size - 0x100;
-        // }
         result = inv_icm20948_write_mems(s, memaddr, write_size, (unsigned char *)data);
         if (result) {
-            INV_MSG(INV_MSG_LEVEL_ERROR,"Error writing DMP firmware at memaddr 0x%04x", memaddr);
+            INV_MSG(INV_MSG_LEVEL_ERROR, "Error writing DMP firmware at memaddr: %d", memaddr);
             return result;
         }
+        
         data += write_size;
         size -= write_size;
         memaddr += write_size;
     }
-    INV_MSG(INV_MSG_LEVEL_INFO,"DMP firmware written to memory, now verifying...");
 
     // Verify DMP memory
 
@@ -58,24 +53,20 @@ int inv_icm20948_firmware_load(struct inv_icm20948 * s, const unsigned char *dat
     memaddr = load_addr;
     while (size > 0) {
         write_size = min(size, 0x100);
-        // if ((memaddr & 0xff) + write_size > 0x100) {
-        //     // Moved across a bank
-        //     write_size = (memaddr & 0xff) + write_size - 0x100;
-        // }
         result = inv_icm20948_read_mems(s, memaddr, write_size, data_cmp);
         if (result) {
             flag++; // Error, DMP not written correctly
-            INV_MSG(INV_MSG_LEVEL_ERROR,"Error reading DMP firmware at memaddr 0x%04x", memaddr);
+            INV_MSG(INV_MSG_LEVEL_ERROR, "Error reading DMP firmware at memaddr: %d", memaddr);
         }
+        
         if (memcmp(data_cmp, data, write_size)) {
-            INV_MSG(INV_MSG_LEVEL_ERROR,"Error checking DMP firmware at memaddr 0x%04x", memaddr);
+            INV_MSG(INV_MSG_LEVEL_ERROR, "DMP firmware verification failed at memaddr: %d", memaddr);
             return -1;
         }
         data += write_size;
         size -= write_size;
         memaddr += write_size;
     }
-    INV_MSG(INV_MSG_LEVEL_INFO,"DMP firmware verified successfully!");
 
 #if defined(WIN32)   
     //if(!flag)

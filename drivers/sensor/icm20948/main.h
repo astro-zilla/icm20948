@@ -8,17 +8,20 @@
 #include <zephyr/devicetree.h>
 
 #include "Invn/Devices/Drivers/ICM20948/Icm20948.h"
-
-struct icm20948_data {
-    struct inv_icm20948 icm_device;
-};
+#include "Invn/Devices/Drivers/ICM20948/Icm20948MPUFifoControl.h"
 
 struct icm20948_config {
     const struct i2c_dt_spec i2c;
     const struct gpio_dt_spec int_gpio;
-    const struct base_driver_t base_driver;
-};
+    const unsigned char gyro_div;
+    const unsigned short secondary_div;
+    const short accel_div;
+    const unsigned char gyro_averaging;
+    const unsigned char accel_averaging;
+    const uint8_t gyro_fullscale;
+    const uint8_t accel_fullscale;
 
+};
 
 #define ICM20948_INIT_PRIORITY 91
 

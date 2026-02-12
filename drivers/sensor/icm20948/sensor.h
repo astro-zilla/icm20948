@@ -28,14 +28,12 @@
 #define DEF_SELFTEST_GYRO_SENS			(DEF_ST_SCALE / DEF_ST_GYRO_FS_DPS)
 #define DEF_ST_ACCEL_FS_MG				2000
 
-#define AK0991x_DEFAULT_I2C_ADDR	0x0C
-
 #ifndef INV20948_ABS
 #define INV20948_ABS(x) (((x) < 0) ? -(x) : (x))
 #endif
 
 /* Forward declaration */
-int icm20948_sensor_setup(struct inv_icm20948 * icm_device);
+int icm20948_sensor_setup(struct inv_icm20948 * icm_device, const struct icm20948_config * config);
 // void iddwrapper_protocol_event_cb(enum DynProtocolEtype etype, enum DynProtocolEid eid, const DynProtocolEdata_t * edata, void * cookie);
 // void iddwrapper_transport_event_cb(enum DynProTransportEvent e, union DynProTransportEventData data, void * cookie);
 // void sensor_event(const inv_sensor_event_t * event, void * arg);
@@ -49,6 +47,8 @@ void inv_icm20948_get_st_bias(struct inv_icm20948 * s, int *gyro_bias, int *acce
 void inv_icm20948_sleep(int ms);
 int load_dmp3(struct inv_icm20948 * icm_device);
 void check_rc(int rc, const char * msg_context);
+int icm20948_channel_get(const struct device *dev, enum sensor_channel chan, struct sensor_value *val);
+int icm20948_sample_fetch(const struct device *dev, enum sensor_channel chan);
 
 // extern inv_icm20948_t icm_device;
 // extern DynProtocol_t protocol;

@@ -19,7 +19,7 @@
 
 #include "Icm20948AuxCompassAkm.h"
 
-struct inv_fifo_decoded_t fd;
+// struct inv_fifo_decoded_t fd;
 
 static void inv_decode_3_16bit_elements(short *out_data, const unsigned char *in_data);
 static void inv_decode_3_32bit_elements(long *out_data, const unsigned char *in_data);
@@ -364,7 +364,7 @@ static int check_fifo_decoded_headers(unsigned short header, unsigned short head
 }
 
 /** Software FIFO, mirror of DMP HW FIFO, hence of max HARDWARE_FIFO_SIZE */
-static unsigned char fifo_data[HARDWARE_FIFO_SIZE];
+// static unsigned char fifo_data[HARDWARE_FIFO_SIZE];
     
 /** Determine number of samples present in SW FIFO fifo_data containing fifo_size bytes to be analyzed. Total number
 * of samples filled in total_sample_cnt, number of samples per sensor filled in sample_cnt_array array
@@ -377,7 +377,7 @@ static int extract_sample_cnt(struct inv_icm20948 * s, int fifo_size, unsigned s
 	while (fifo_idx < fifo_size) {
 		unsigned short header;
 		unsigned short header2;
-		int need_sz = get_packet_size_and_samplecnt(&fifo_data[fifo_idx], &header, &header2, sample_cnt_array);
+		int need_sz = get_packet_size_and_samplecnt(&s->fifo_data[fifo_idx], &header, &header2, sample_cnt_array);
 		
 		// Guarantee there is a full packet before continuing to decode the FIFO packet
 		if (fifo_size-fifo_idx < need_sz)
@@ -416,7 +416,7 @@ int inv_icm20948_fifo_swmirror(struct inv_icm20948 * s, int *fifo_sw_size, unsig
 
 	// Mirror HW FIFO into local SW FIFO, taking into account remaining *fifo_sw_size bytes still present in SW FIFO
 	if (*fifo_sw_size < HARDWARE_FIFO_SIZE ) {
-		*fifo_sw_size += dmp_get_fifo_all(s, (HARDWARE_FIFO_SIZE - *fifo_sw_size),&fifo_data[*fifo_sw_size],&reset);
+		*fifo_sw_size += dmp_get_fifo_all(s, (HARDWARE_FIFO_SIZE - *fifo_sw_size),&s->fifo_data[*fifo_sw_size],&reset);
 
 		if (reset)
 			goto error;
@@ -437,11 +437,11 @@ error:
 int inv_icm20948_fifo_pop(struct inv_icm20948 * s, unsigned short *user_header, unsigned short *user_header2, int *fifo_sw_size)  
 {
 	int need_sz=0; // size in bytes of packet to be analyzed from FIFO
-	unsigned char *fifo_ptr = fifo_data; // pointer to next byte in SW FIFO to be parsed
+	unsigned char *fifo_ptr = s->fifo_data; // pointer to next byte in SW FIFO to be parsed
     
 	if (*fifo_sw_size > 3) {
 		// extract headers and number of bytes requested by next sample present in FIFO
-		need_sz = get_packet_size_and_samplecnt(fifo_data, &fd.header, &fd.header2, 0);
+		need_sz = get_packet_size_and_samplecnt(s->fifo_data, &s->fd.header, &s->fd.header2, 0);
 
 		// Guarantee there is a full packet before continuing to decode the FIFO packet
 		if (*fifo_sw_size < need_sz) {
@@ -449,19 +449,19 @@ int inv_icm20948_fifo_pop(struct inv_icm20948 * s, unsigned short *user_header, 
 		}
 
 		fifo_ptr += HEADER_SZ;        
-		if (fd.header & HEADER2_SET)
+		if (s->fd.header & HEADER2_SET)
 			fifo_ptr += HEADER2_SZ;        
 
 		// extract payload data from SW FIFO
-		fifo_ptr += inv_icm20948_inv_decode_one_ivory_fifo_packet(s, &fd, fifo_ptr);        
+		fifo_ptr += inv_icm20948_inv_decode_one_ivory_fifo_packet(s, fifo_ptr);        
 
 		// remove first need_sz bytes from SW FIFO
 		*fifo_sw_size -= need_sz;
 		if(*fifo_sw_size)
-			memmove(fifo_data, &fifo_data[need_sz], *fifo_sw_size);// Data left in FIFO
+			memmove(s->fifo_data, &s->fifo_data[need_sz], *fifo_sw_size);// Data left in FIFO
 
-		*user_header = fd.header;
-		*user_header2 = fd.header2;
+		*user_header = s->fd.header;
+		*user_header2 = s->fd.header2;
 	}
 
 	return MPU_SUCCESS;
@@ -472,7 +472,7 @@ int inv_icm20948_dmp_process_fifo(struct inv_icm20948 * s, int *left_in_fifo, un
     int result = MPU_SUCCESS;
     int reset=0; 
     int need_sz=0;
-    unsigned char *fifo_ptr = fifo_data;
+    unsigned char *fifo_ptr = s->fifo_data;
 
     long long ts=0;
 
@@ -481,7 +481,7 @@ int inv_icm20948_dmp_process_fifo(struct inv_icm20948 * s, int *left_in_fifo, un
     
     if (*left_in_fifo < HARDWARE_FIFO_SIZE ) 
     {
-        *left_in_fifo += dmp_get_fifo_all(s, (HARDWARE_FIFO_SIZE - *left_in_fifo),&fifo_data[*left_in_fifo],&reset);
+        *left_in_fifo += dmp_get_fifo_all(s, (HARDWARE_FIFO_SIZE - *left_in_fifo),&s->fifo_data[*left_in_fifo],&reset);
         //sprintf(test_str, "Left in FIFO: %d\r\n",*left_in_fifo);
         //print_command_console(test_str);
         if (reset) 
@@ -493,7 +493,7 @@ int inv_icm20948_dmp_process_fifo(struct inv_icm20948 * s, int *left_in_fifo, un
     
     if (*left_in_fifo > 3) {
 	// no need to extract number of sample per sensor for current function, so provide 0 as last parameter
-        need_sz = get_packet_size_and_samplecnt(fifo_data, &fd.header, &fd.header2, 0);
+        need_sz = get_packet_size_and_samplecnt(s->fifo_data, &s->fd.header, &s->fd.header2, 0);
         
         // Guarantee there is a full packet before continuing to decode the FIFO packet
         if (*left_in_fifo < need_sz) {
@@ -503,12 +503,12 @@ int inv_icm20948_dmp_process_fifo(struct inv_icm20948 * s, int *left_in_fifo, un
         }
 
         if(user_header)
-            *user_header = fd.header;
+            *user_header = s->fd.header;
         
         if(user_header2)
-            *user_header2 = fd.header2;
+            *user_header2 = s->fd.header2;
         
-        if (check_fifo_decoded_headers(fd.header, fd.header2)) { 
+        if (check_fifo_decoded_headers(s->fd.header, s->fd.header2)) { 
             // Decode error
             dmp_reset_fifo(s);
             *left_in_fifo = 0;
@@ -517,13 +517,13 @@ int inv_icm20948_dmp_process_fifo(struct inv_icm20948 * s, int *left_in_fifo, un
         
         fifo_ptr += HEADER_SZ;
         
-        if (fd.header & HEADER2_SET)
+        if (s->fd.header & HEADER2_SET)
             fifo_ptr += HEADER2_SZ;        
         
         //time stamp 
         ts = inv_icm20948_get_tick_count();
         
-        fifo_ptr += inv_icm20948_inv_decode_one_ivory_fifo_packet(s, &fd, fifo_ptr);
+        fifo_ptr += inv_icm20948_inv_decode_one_ivory_fifo_packet(s, fifo_ptr);
 
         if(time_stamp)
             *time_stamp = ts;
@@ -534,7 +534,7 @@ int inv_icm20948_dmp_process_fifo(struct inv_icm20948 * s, int *left_in_fifo, un
         
         *left_in_fifo -= need_sz;
         if (*left_in_fifo) 
-            memmove(fifo_data, &fifo_data[need_sz], *left_in_fifo);// Data left in FIFO
+            memmove(s->fifo_data, &s->fifo_data[need_sz], *left_in_fifo);// Data left in FIFO
     }
 
     return result;
@@ -558,91 +558,91 @@ static void inv_decode_3_16bit_elements(short *out_data, const unsigned char *in
 * @param[in] fifo_ptr FIFO data, points to just after any header information
 * @return Returns the number of bytes consumed in FIFO data.
 */
-int inv_icm20948_inv_decode_one_ivory_fifo_packet(struct inv_icm20948 * s, struct inv_fifo_decoded_t *fd, const unsigned char *fifo_ptr)
+int inv_icm20948_inv_decode_one_ivory_fifo_packet(struct inv_icm20948 * s, const unsigned char *fifo_ptr)
 {
     const unsigned char *fifo_ptr_start = fifo_ptr;  
 	short odr_cntr;
-    if (fd->header & ACCEL_SET) {
+    if (s->fd.header & ACCEL_SET) {
         // do not cast data here, do that when you use it
-        inv_decode_3_16bit_elements(fd->accel_s, fifo_ptr);
-        fd->accel[0] = fd->accel_s[0] << 15;
-        fd->accel[1] = fd->accel_s[1] << 15;
-        fd->accel[2] = fd->accel_s[2] << 15;
+        inv_decode_3_16bit_elements(s->fd.accel_s, fifo_ptr);
+        s->fd.accel[0] = s->fd.accel_s[0] << 15;
+        s->fd.accel[1] = s->fd.accel_s[1] << 15;
+        s->fd.accel[2] = s->fd.accel_s[2] << 15;
         fifo_ptr += ACCEL_DATA_SZ;
     }
 
-    if (fd->header & GYRO_SET) {
-        inv_decode_3_16bit_elements(fd->gyro, fifo_ptr);
+    if (s->fd.header & GYRO_SET) {
+        inv_decode_3_16bit_elements(s->fd.gyro, fifo_ptr);
         fifo_ptr += GYRO_DATA_SZ;
-        inv_decode_3_16bit_elements(fd->gyro_bias, fifo_ptr);
+        inv_decode_3_16bit_elements(s->fd.gyro_bias, fifo_ptr);
         fifo_ptr += GYRO_BIAS_DATA_SZ;
     }
 
-    if (fd->header & CPASS_SET) {
-        inv_decode_3_16bit_elements(fd->cpass_raw_data, fifo_ptr);
-        inv_icm20948_apply_raw_compass_matrix(s, fd->cpass_raw_data, fd->compass);
-        memcpy( fd->cpass_calibr_6chars, fifo_ptr, 6*sizeof(unsigned char));
+    if (s->fd.header & CPASS_SET) {
+        inv_decode_3_16bit_elements(s->fd.cpass_raw_data, fifo_ptr);
+        inv_icm20948_apply_raw_compass_matrix(s, s->fd.cpass_raw_data, s->fd.compass);
+        memcpy( s->fd.cpass_calibr_6chars, fifo_ptr, 6*sizeof(unsigned char));
         fifo_ptr += CPASS_DATA_SZ;
     }
 
-    if(fd->header & ALS_SET) {
+    if(s->fd.header & ALS_SET) {
         fifo_ptr += ALS_DATA_SZ;
     }
 
-    if (fd->header & QUAT6_SET) {
-        inv_decode_3_32bit_elements(fd->dmp_3e_6quat, fifo_ptr);
+    if (s->fd.header & QUAT6_SET) {
+        inv_decode_3_32bit_elements(s->fd.dmp_3e_6quat, fifo_ptr);
         fifo_ptr += QUAT6_DATA_SZ;
     }
 
-    if (fd->header & QUAT9_SET) {
-        inv_decode_3_32bit_elements(fd->dmp_3e_9quat, fifo_ptr);
-        fd->dmp_rv_accuracyQ29 = ((0xff & fifo_ptr[12]) << 24) | ((0xff & fifo_ptr[13]) << 16);
+    if (s->fd.header & QUAT9_SET) {
+        inv_decode_3_32bit_elements(s->fd.dmp_3e_9quat, fifo_ptr);
+        s->fd.dmp_rv_accuracyQ29 = ((0xff & fifo_ptr[12]) << 24) | ((0xff & fifo_ptr[13]) << 16);
         fifo_ptr += QUAT9_DATA_SZ;
     }
 
-    if (fd->header & PED_STEPDET_SET) {
-        fd->ped_step_det_ts = ((0xff & fifo_ptr[0]) << 24) | ((0xff & fifo_ptr[1]) << 16) | ((0xff & fifo_ptr[2]) << 8) | (0xff & fifo_ptr[3]);
+    if (s->fd.header & PED_STEPDET_SET) {
+        s->fd.ped_step_det_ts = ((0xff & fifo_ptr[0]) << 24) | ((0xff & fifo_ptr[1]) << 16) | ((0xff & fifo_ptr[2]) << 8) | (0xff & fifo_ptr[3]);
         fifo_ptr += PED_STEPDET_TIMESTAMP_SZ;
     }
 
-    if (fd->header & GEOMAG_SET) {
-        inv_decode_3_32bit_elements(fd->dmp_3e_geomagquat, fifo_ptr);
-        fd->dmp_geomag_accuracyQ29 = ((0xff & fifo_ptr[12]) << 24) | ((0xff & fifo_ptr[13]) << 16);
+    if (s->fd.header & GEOMAG_SET) {
+        inv_decode_3_32bit_elements(s->fd.dmp_3e_geomagquat, fifo_ptr);
+        s->fd.dmp_geomag_accuracyQ29 = ((0xff & fifo_ptr[12]) << 24) | ((0xff & fifo_ptr[13]) << 16);
         fifo_ptr += GEOMAG_DATA_SZ;
     }
 
-    if(fd->header & PRESSURE_SET) {
+    if(s->fd.header & PRESSURE_SET) {
         fifo_ptr += PRESSURE_DATA_SZ;
     }
-    if (fd->header & CPASS_CALIBR_SET) {
-        inv_decode_3_32bit_elements(fd->cpass_calibr, fifo_ptr);
-        memcpy( fd->cpass_calibr_12chars, fifo_ptr, 12*sizeof(unsigned char));
+    if (s->fd.header & CPASS_CALIBR_SET) {
+        inv_decode_3_32bit_elements(s->fd.cpass_calibr, fifo_ptr);
+        memcpy( s->fd.cpass_calibr_12chars, fifo_ptr, 12*sizeof(unsigned char));
         fifo_ptr += CPASS_CALIBR_DATA_SZ;
     }
 
-    if (fd->header2 & ACCEL_ACCURACY_SET) {
-        fd->accel_accuracy = ((0xff & fifo_ptr[0]) << 8) | (0xff & fifo_ptr[1]);
+    if (s->fd.header2 & ACCEL_ACCURACY_SET) {
+        s->fd.accel_accuracy = ((0xff & fifo_ptr[0]) << 8) | (0xff & fifo_ptr[1]);
         fifo_ptr += ACCEL_ACCURACY_SZ;
     }
         
-    if (fd->header2 & GYRO_ACCURACY_SET) {
-        fd->gyro_accuracy = ((0xff & fifo_ptr[0]) << 8) | (0xff & fifo_ptr[1]);
+    if (s->fd.header2 & GYRO_ACCURACY_SET) {
+        s->fd.gyro_accuracy = ((0xff & fifo_ptr[0]) << 8) | (0xff & fifo_ptr[1]);
         fifo_ptr += GYRO_ACCURACY_SZ;
     }
  
-    if (fd->header2 & CPASS_ACCURACY_SET) {
-        fd->cpass_accuracy = ((0xff & fifo_ptr[0]) << 8) | (0xff & fifo_ptr[1]);
+    if (s->fd.header2 & CPASS_ACCURACY_SET) {
+        s->fd.cpass_accuracy = ((0xff & fifo_ptr[0]) << 8) | (0xff & fifo_ptr[1]);
         fifo_ptr += CPASS_ACCURACY_SZ;
     }
 
-	if (fd->header2 & FLIP_PICKUP_SET) {
-		fd->flip_pickup = ((0xff & fifo_ptr[0]) << 8) | (0xff & fifo_ptr[1]);
+	if (s->fd.header2 & FLIP_PICKUP_SET) {
+		s->fd.flip_pickup = ((0xff & fifo_ptr[0]) << 8) | (0xff & fifo_ptr[1]);
 		fifo_ptr += FLIP_PICKUP_SZ;
 	}
 	
-	if (fd->header2 & ACT_RECOG_SET) {
-		fd->bac_state = ((0xff & fifo_ptr[0]) << 8) | (0xff & fifo_ptr[1]);
-		fd->bac_ts     = ((0xff & fifo_ptr[2]) << 24) | ((0xff & fifo_ptr[3]) << 16) | ((0xff & fifo_ptr[4]) << 8) | (0xff & fifo_ptr[5]);
+	if (s->fd.header2 & ACT_RECOG_SET) {
+		s->fd.bac_state = ((0xff & fifo_ptr[0]) << 8) | (0xff & fifo_ptr[1]);
+		s->fd.bac_ts     = ((0xff & fifo_ptr[2]) << 24) | ((0xff & fifo_ptr[3]) << 16) | ((0xff & fifo_ptr[4]) << 8) | (0xff & fifo_ptr[5]);
 		fifo_ptr += ACT_RECOG_SZ;
 	}
 
@@ -653,32 +653,32 @@ int inv_icm20948_inv_decode_one_ivory_fifo_packet(struct inv_icm20948 * s, struc
 	(void)odr_cntr;
 	fifo_ptr += FOOTER_SZ;
 
-    fd->new_data = 1; // Record a new data set
+    s->fd.new_data = 1; // Record a new data set
 
     return fifo_ptr-fifo_ptr_start;
 }
 
-int inv_icm20948_dmp_get_accel(long acl[3])
+int inv_icm20948_dmp_get_accel(struct inv_icm20948 * s, long acl[3])
 {
     if(!acl) return -1;
-    memcpy( acl, fd.accel, 3*sizeof(long));
+    memcpy( acl, s->fd.accel, 3*sizeof(long));
     return MPU_SUCCESS;
 } 
 
-int inv_icm20948_dmp_get_raw_gyro(short raw_gyro[3])
+int inv_icm20948_dmp_get_raw_gyro(struct inv_icm20948 * s, short raw_gyro[3])
 {
     if(!raw_gyro) return -1;
-    raw_gyro[0] = fd.gyro[0];
-    raw_gyro[1] = fd.gyro[1];
-    raw_gyro[2] = fd.gyro[2];
+    raw_gyro[0] = s->fd.gyro[0];
+    raw_gyro[1] = s->fd.gyro[1];
+    raw_gyro[2] = s->fd.gyro[2];
     return MPU_SUCCESS;
 }
 
 
-int inv_icm20948_dmp_get_gyro_bias(short gyro_bias[3])
+int inv_icm20948_dmp_get_gyro_bias(struct inv_icm20948 * s, short gyro_bias[3])
 {
     if(!gyro_bias) return -1;  
-    memcpy(gyro_bias, fd.gyro_bias, 3*sizeof(short)); 
+    memcpy(gyro_bias, s->fd.gyro_bias, 3*sizeof(short)); 
     return MPU_SUCCESS;
 }
 
@@ -696,98 +696,98 @@ int inv_icm20948_dmp_get_calibrated_gyro(signed long calibratedData[3], signed l
     return MPU_SUCCESS;
 }
 
-int inv_icm20948_dmp_get_6quaternion(long quat[3])
+int inv_icm20948_dmp_get_6quaternion(struct inv_icm20948 * s, long quat[3])
 {
     if(!quat) return -1;
-    memcpy( quat, fd.dmp_3e_6quat, sizeof(fd.dmp_3e_6quat));            
+    memcpy( quat, s->fd.dmp_3e_6quat, sizeof(s->fd.dmp_3e_6quat));            
     return MPU_SUCCESS;
 }
 
-int inv_icm20948_dmp_get_9quaternion(long quat[3])
+int inv_icm20948_dmp_get_9quaternion(struct inv_icm20948 * s, long quat[3])
 {
     if(!quat) return -1;
-    memcpy( quat, fd.dmp_3e_9quat, sizeof(fd.dmp_3e_9quat));            
+    memcpy( quat, s->fd.dmp_3e_9quat, sizeof(s->fd.dmp_3e_9quat));            
     return MPU_SUCCESS;
 }
 
-int inv_icm20948_dmp_get_gmrvquaternion(long quat[3])
+int inv_icm20948_dmp_get_gmrvquaternion(struct inv_icm20948 * s, long quat[3])
 {
     if(!quat) return -1;
-    memcpy( quat, fd.dmp_3e_geomagquat, sizeof(fd.dmp_3e_geomagquat));            
+    memcpy( quat, s->fd.dmp_3e_geomagquat, sizeof(s->fd.dmp_3e_geomagquat));            
     return MPU_SUCCESS;
 }
 
-int inv_icm20948_dmp_get_raw_compass(long raw_compass[3])
+int inv_icm20948_dmp_get_raw_compass(struct inv_icm20948 * s, long raw_compass[3])
 {
     if(!raw_compass) return -1;
-    memcpy( raw_compass, fd.compass, 3*sizeof(long)); 
+    memcpy( raw_compass, s->fd.compass, 3*sizeof(long)); 
     return MPU_SUCCESS;
 }
 
-int inv_icm20948_dmp_get_calibrated_compass(long cal_compass[3])
+int inv_icm20948_dmp_get_calibrated_compass(struct inv_icm20948 * s, long cal_compass[3])
 {
     if(!cal_compass) return -1;
-    memcpy( cal_compass, fd.cpass_calibr, 3*sizeof(long));  
+    memcpy( cal_compass, s->fd.cpass_calibr, 3*sizeof(long));  
     return MPU_SUCCESS;
 }
 
-int inv_icm20948_dmp_get_bac_state(uint16_t *bac_state)
+int inv_icm20948_dmp_get_bac_state(struct inv_icm20948 * s, uint16_t *bac_state)
 {
 	if(!bac_state) return -1;
-	*bac_state = fd.bac_state;
+	*bac_state = s->fd.bac_state;
 	return 0;
 }
 
-int inv_icm20948_dmp_get_bac_ts(long *bac_ts)
+int inv_icm20948_dmp_get_bac_ts(struct inv_icm20948 * s, long *bac_ts)
 {
 	if(!bac_ts) return -1;
-	*bac_ts = fd.bac_ts;
+	*bac_ts = s->fd.bac_ts;
 	return 0;
 }
 
-int inv_icm20948_dmp_get_flip_pickup_state(uint16_t *flip_pickup)
+int inv_icm20948_dmp_get_flip_pickup_state(struct inv_icm20948 * s, uint16_t *flip_pickup)
 {
 	if(!flip_pickup) return -1;
-	*flip_pickup = fd.flip_pickup;
+	*flip_pickup = s->fd.flip_pickup;
 	return 0;
 }
 
 /** Returns accuracy of accel.
  * @return Accuracy of accel with 0 being not accurate, and 3 being most accurate.
 */
-int inv_icm20948_get_accel_accuracy(void)
+int inv_icm20948_get_accel_accuracy(struct inv_icm20948 * s)
 {
-	return fd.accel_accuracy;
+	return s->fd.accel_accuracy;
 }
 
 /** Returns accuracy of gyro.
  * @return Accuracy of gyro with 0 being not accurate, and 3 being most accurate.
 */
-int inv_icm20948_get_gyro_accuracy(void)
+int inv_icm20948_get_gyro_accuracy(struct inv_icm20948 * s)
 {
-	return fd.gyro_accuracy;
+	return s->fd.gyro_accuracy;
 }
 
 /** Returns accuracy of compass.
  * @return Accuracy of compass with 0 being not accurate, and 3 being most accurate.
 */
-int inv_icm20948_get_mag_accuracy(void)
+int inv_icm20948_get_mag_accuracy(struct inv_icm20948 * s)
 {
-	return fd.cpass_accuracy;
+	return s->fd.cpass_accuracy;
 }
 
 /** Returns accuracy of geomagnetic rotation vector.
  * @return Accuracy of GMRV in Q29.
 */
-int inv_icm20948_get_gmrv_accuracy(void)
+int inv_icm20948_get_gmrv_accuracy(struct inv_icm20948 * s)
 {
-	return fd.dmp_geomag_accuracyQ29;
+	return s->fd.dmp_geomag_accuracyQ29;
 }
 
 /** Returns accuracy of rotation vector.
  * @return Accuracy of RV in Q29.
 */
-int inv_icm20948_get_rv_accuracy(void)
+int inv_icm20948_get_rv_accuracy(struct inv_icm20948 * s)
 {
-	return fd.dmp_rv_accuracyQ29;
+	return s->fd.dmp_rv_accuracyQ29;
 }

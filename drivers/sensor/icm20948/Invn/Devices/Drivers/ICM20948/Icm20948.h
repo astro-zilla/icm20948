@@ -41,11 +41,19 @@
 #include "Icm20948DataConverter.h"
 #include "Icm20948AuxCompassAkm.h"
 #include "Icm20948SelfTest.h"
+#include "Icm20948MPUFifoControl.h"
 
 
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>
+
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/sensor.h>
+#include <zephyr/device.h>
+#include <zephyr/kernel.h>
+#include <zephyr/kernel/thread.h>
+#include <zephyr/kernel/thread_stack.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -127,6 +135,8 @@ typedef struct inv_icm20948 {
 		int fifoError;
 		unsigned char fifo_overflow;
 	} fifo_info;
+	struct inv_fifo_decoded_t fd;
+	unsigned char fifo_data[HARDWARE_FIFO_SIZE];
 	/* interface mapping */
 	unsigned long sStepCounterToBeSubtracted;
 	unsigned long sOldSteps;
@@ -191,12 +201,30 @@ typedef struct inv_icm20948 {
 	/* Icm20649Setup */
 	short set_accuracy;
 	int new_accuracy;
+	/* sensor setup */
+	struct sample_t {
+		float accel[3];
+		float gyro[3];
+		float compass[3];
+		float die_temp;
+		int accuracy;
+	} sample;
+	/* trigger setup */
+	#ifdef CONFIG_ICM20948_TRIGGER
+	struct gpio_callback gpio_cb;
+	sensor_trigger_handler_t handler;
+	const struct sensor_trigger *trigger;
+	const struct device *dev;
+	unsigned char int_enables[4];
+	#if defined(CONFIG_ICM20948_TRIGGER_OWN_THREAD)
+	K_KERNEL_STACK_MEMBER(thread_stack, CONFIG_ICM20948_THREAD_STACK_SIZE);
+	struct k_sem gpio_sem;
+	struct k_thread thread;
+	#elif defined(CONFIG_ICM20948_TRIGGER_GLOBAL_THREAD)
+	struct k_work work;
+	#endif
+	#endif /* CONFIG_ICM20948_TRIGGER */
 } inv_icm20948_t;
-
-/** @brief ICM20948 driver states singleton declaration
- *  Because of Low-level driver limitation only one insance of the driver is allowed
- */
-extern struct inv_icm20948 * icm20948_instance;
 
 /** @brief Hook for low-level system sleep() function to be implemented by upper layer
  *  @param[in] ms number of millisecond the calling thread should sleep
@@ -207,19 +235,6 @@ extern void inv_icm20948_sleep_us(int us);
  *  @return monotonic timestamp in us
  */
 extern uint64_t inv_icm20948_get_time_us(void);
-
-/** @brief Reset and initialize driver states
- *  @param[in] s             handle to driver states structure
- */
-static inline void inv_icm20948_reset_states(struct inv_icm20948 * s,
-		const struct inv_icm20948_serif * serif)
-{
-	assert(icm20948_instance == 0);
-
-	memset(s, 0, sizeof(*s));
-	s->serif = *serif;
-	icm20948_instance = s;
-}
 
 #ifdef __cplusplus
 }

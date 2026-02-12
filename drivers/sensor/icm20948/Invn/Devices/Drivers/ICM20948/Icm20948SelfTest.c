@@ -1,7 +1,7 @@
 /*
 * ________________________________________________________________________________________________________
-* Copyright © 2014-2015 InvenSense Inc. Portions Copyright © 2014-2015 Movea. All rights reserved.
-* This software, related documentation and any modifications thereto (collectively “Software”) is subject
+* Copyright ï¿½ 2014-2015 InvenSense Inc. Portions Copyright ï¿½ 2014-2015 Movea. All rights reserved.
+* This software, related documentation and any modifications thereto (collectively ï¿½Softwareï¿½) is subject
 * to InvenSense and its licensors' intellectual property rights under U.S. and international copyright and
 * other intellectual property rights laws.
 * InvenSense and its licensors retain all intellectual property and proprietary rights in and to the Software
@@ -173,6 +173,8 @@ static int inv_recover_setting(struct inv_icm20948 * s, const struct recover_reg
 
 	result |= inv_icm20948_write_single_mems_reg(s, REG_INT_ENABLE_1, saved_regs->int_enable_1);
 
+	result |= inv_icm20948_write_single_mems_reg(s, REG_INT_ENABLE_2, saved_regs->int_enable_2);
+
 	result |= inv_icm20948_write_single_mems_reg(s, REG_FIFO_EN, saved_regs->fifo_en);
 
 	result |= inv_icm20948_write_single_mems_reg(s, REG_FIFO_EN_2, saved_regs->fifo_en_2);
@@ -211,7 +213,7 @@ static int inv_check_accelgyro_self_test(enum INV_SENSORS sensorType, uint8_t * 
 
 	// Calculate factory Self-Test value (ST_OTP) based on the following equation:
 	// The factory Self-Test value (ST_OTP) is calculated from the ST_Code (the SELF_TEST values read)
-	// using the following equation, where “FS” is the full scale value code:
+	// using the following equation, where ï¿½FSï¿½ is the full scale value code:
 	// st_otp = 2620/2^FS * 1.01^(st_value - 1)
 	// the result of the equation is in sSelfTestEquation array
 	for (i = 0; i < 3; i++) {
@@ -371,7 +373,7 @@ static int inv_do_test_accelgyro(struct inv_icm20948 * s, enum INV_SENSORS senso
 	}
 
 	// read the accel/gyro output
-	// the output values are 16 bits wide and in 2’s complement
+	// the output values are 16 bits wide and in 2ï¿½s complement
 	// Average 200 readings and save the averaged values
 	result = inv_selftest_read_samples(s, sensorType, meanValue, &lNbSamples);
 	if (result)

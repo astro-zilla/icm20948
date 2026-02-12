@@ -1,7 +1,7 @@
 /*
 * ________________________________________________________________________________________________________
-* Copyright © 2014-2015 InvenSense Inc. Portions Copyright © 2014-2015 Movea. All rights reserved.
-* This software, related documentation and any modifications thereto (collectively “Software”) is subject
+* Copyright ï¿½ 2014-2015 InvenSense Inc. Portions Copyright ï¿½ 2014-2015 Movea. All rights reserved.
+* This software, related documentation and any modifications thereto (collectively ï¿½Softwareï¿½) is subject
 * to InvenSense and its licensors' intellectual property rights under U.S. and international copyright and
 * other intellectual property rights laws.
 * InvenSense and its licensors retain all intellectual property and proprietary rights in and to the Software
@@ -255,11 +255,11 @@ int inv_icm20948_initialize_lower_driver(struct inv_icm20948 * s, enum SMARTSENS
 	// set FIFO watermark to 80% of actual FIFO size
 	result |= dmp_icm20948_set_FIFO_watermark(s, 800);
 
-	// Enable Interrupts.
-	data = 0x2;
-	result |= inv_icm20948_write_mems_reg(s, REG_INT_ENABLE, 1, &data); // Enable DMP Interrupt
-	data = 0x1;
-	result |= inv_icm20948_write_mems_reg(s, REG_INT_ENABLE_2, 1, &data); // Enable FIFO Overflow Interrupt
+	// Enable Interrupts. /* MODIFIED DO NOT DO THIS HERE, in trigger.c instead */
+	// data = 0x2;
+	// result |= inv_icm20948_write_mems_reg(s, REG_INT_ENABLE, 1, &data); // Enable DMP Interrupt
+	// data = 0x1;
+	// result |= inv_icm20948_write_mems_reg(s, REG_INT_ENABLE_2, 1, &data); // Enable FIFO Overflow Interrupt
 
 	// TRACKING : To have accelerometers datas and the interrupt without gyro enables.
 	data = 0XE4;
@@ -271,8 +271,8 @@ int inv_icm20948_initialize_lower_driver(struct inv_icm20948 * s, enum SMARTSENS
 	inv_icm20948_write_mems_reg(s, REG_HW_FIX_DISABLE,1,&data);
 
 	// Setup MEMs properties.
-	s->base_state.accel_averaging = 1; //Change this value if higher sensor sample avergaing is required.
-	s->base_state.gyro_averaging = 1;  //Change this value if higher sensor sample avergaing is required.
+	// s->base_state.accel_averaging = 1; //Change this value if higher sensor sample avergaing is required.
+	// s->base_state.gyro_averaging = 1;  //Change this value if higher sensor sample avergaing is required.
 	inv_icm20948_set_gyro_divider(s, FIFO_DIVIDER);       //Initial sampling rate 1125Hz/19+1 = 56Hz.
 	inv_icm20948_set_accel_divider(s, FIFO_DIVIDER);      //Initial sampling rate 1125Hz/19+1 = 56Hz.
 
@@ -302,7 +302,7 @@ static void activate_compass(struct inv_icm20948 * s)
 	s->s_compass_available = 1;
 }
 
-static void desactivate_compass(struct inv_icm20948 * s)
+static void deactivate_compass(struct inv_icm20948 * s)
 {
 	s->s_compass_available = 0;
 }
@@ -349,7 +349,7 @@ int inv_icm20948_set_slave_compass_id(struct inv_icm20948 * s, int id)
 	result |= inv_icm20948_compass_dmp_cal(s, s->mounting_matrix, s->mounting_matrix_secondary_compass);
 	
 	if (result)
-		desactivate_compass(s);
+		deactivate_compass(s);
 
 	//result = inv_icm20948_sleep_mems(s);
 	inv_icm20948_allow_lpen_control(s);

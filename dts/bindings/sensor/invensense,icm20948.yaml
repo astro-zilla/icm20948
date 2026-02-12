@@ -5,7 +5,7 @@ compatible: "invensense,icm20948"
 include: [sensor-device.yaml, i2c-device.yaml]
 
 properties:
-  irq-gpios:
+  int-gpios:
     type: phandle-array
     description: |
       The INT signal default configuration is active-high.  The
